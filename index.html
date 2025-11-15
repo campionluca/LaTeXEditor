@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX WYSIWYG Editor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 LaTeX WYSIWYG Editor</h1>
+            <p class="subtitle">Editor visuale per template di verifiche scolastiche</p>
+        </header>
+
+        <div class="toolbar">
+            <button id="loadTemplateBtn" class="btn btn-primary">📂 Carica Template</button>
+            <button id="newTemplateBtn" class="btn btn-secondary">➕ Nuovo Template</button>
+            <button id="generateBtn" class="btn btn-success">🔄 Genera LaTeX</button>
+            <button id="downloadBtn" class="btn btn-download">💾 Scarica .tex</button>
+        </div>
+
+        <div class="main-content">
+            <!-- Pannello Form WYSIWYG -->
+            <div class="form-panel">
+                <h2>Compila il Template</h2>
+
+                <div class="form-section">
+                    <h3>Informazioni Generali</h3>
+                    <div class="form-group">
+                        <label for="tempo">Tempo:</label>
+                        <input type="text" id="tempo" placeholder="es. 100 minuti">
+                    </div>
+                    <div class="form-group">
+                        <label for="docente">Docente/i:</label>
+                        <input type="text" id="docente" placeholder="es. Prof. Mario Rossi">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Esercizi</h3>
+                    <div class="form-group">
+                        <label for="consegna">Consegna:</label>
+                        <textarea id="consegna" rows="3" placeholder="Inserisci la consegna dell'esercizio..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="es10">Esercizio ($\star$):</label>
+                        <textarea id="es10" rows="3" placeholder="Descrizione esercizio con stella..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Griglia di Valutazione</h3>
+                    <div id="descrittoriContainer">
+                        <!-- Descrittori verranno aggiunti dinamicamente -->
+                    </div>
+                    <button id="addDescrittoreBtn" class="btn btn-small">➕ Aggiungi Descrittore</button>
+                </div>
+            </div>
+
+            <!-- Pannello Preview LaTeX -->
+            <div class="preview-panel">
+                <h2>Codice LaTeX Generato</h2>
+                <div class="code-actions">
+                    <button id="copyCodeBtn" class="btn btn-small">📋 Copia Codice</button>
+                </div>
+                <pre id="latexPreview" class="latex-code"><code>Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
