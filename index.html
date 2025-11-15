@@ -15,9 +15,19 @@
 
         <div class="toolbar">
             <button id="loadTemplateBtn" class="btn btn-primary">📂 Carica Template</button>
-            <button id="newTemplateBtn" class="btn btn-secondary">➕ Nuovo Template</button>
+            <button id="newTemplateBtn" class="btn btn-secondary">➕ Nuovo</button>
             <button id="generateBtn" class="btn btn-success">🔄 Genera LaTeX</button>
             <button id="downloadBtn" class="btn btn-download">💾 Scarica .tex</button>
+            <div class="toolbar-separator"></div>
+            <button id="exportJsonBtn" class="btn btn-info">📤 Esporta Progetto</button>
+            <button id="importJsonBtn" class="btn btn-info">📥 Importa Progetto</button>
+            <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
+            <div class="toolbar-separator"></div>
+            <button id="undoBtn" class="btn btn-secondary">↶ Indietro</button>
+            <button id="redoBtn" class="btn btn-secondary">↷ Avanti</button>
+            <div class="toolbar-separator"></div>
+            <button id="themeToggleBtn" class="btn btn-theme">🌓 Tema</button>
+            <span id="autosaveStatus" class="autosave-status">💾 Salvato automaticamente</span>
         </div>
 
         <div class="main-content">
@@ -40,13 +50,13 @@
                 <div class="form-section">
                     <h3>Esercizi</h3>
                     <div class="form-group">
-                        <label for="consegna">Consegna:</label>
-                        <textarea id="consegna" rows="3" placeholder="Inserisci la consegna dell'esercizio..."></textarea>
+                        <label for="consegna">Consegna Generale:</label>
+                        <textarea id="consegna" rows="3" placeholder="Inserisci la consegna generale..."></textarea>
                     </div>
-                    <div class="form-group">
-                        <label for="es10">Esercizio ($\star$):</label>
-                        <textarea id="es10" rows="3" placeholder="Descrizione esercizio con stella..."></textarea>
+                    <div id="eserciziContainer">
+                        <!-- Esercizi verranno aggiunti dinamicamente -->
                     </div>
+                    <button id="addEsercizioBtn" class="btn btn-small">➕ Aggiungi Esercizio</button>
                 </div>
 
                 <div class="form-section">
@@ -58,13 +68,25 @@
                 </div>
             </div>
 
-            <!-- Pannello Preview LaTeX -->
+            <!-- Pannello Preview -->
             <div class="preview-panel">
-                <h2>Codice LaTeX Generato</h2>
-                <div class="code-actions">
-                    <button id="copyCodeBtn" class="btn btn-small">📋 Copia Codice</button>
+                <div class="preview-tabs">
+                    <button class="tab-btn active" data-tab="latex">📄 Codice LaTeX</button>
+                    <button class="tab-btn" data-tab="visual">👁️ Anteprima Visuale</button>
                 </div>
-                <pre id="latexPreview" class="latex-code"><code>Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...</code></pre>
+
+                <div id="latexTab" class="tab-content active">
+                    <div class="code-actions">
+                        <button id="copyCodeBtn" class="btn btn-small">📋 Copia Codice</button>
+                    </div>
+                    <pre id="latexPreview" class="latex-code"><code>Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...</code></pre>
+                </div>
+
+                <div id="visualTab" class="tab-content">
+                    <div id="visualPreview" class="visual-preview">
+                        <p class="preview-placeholder">Clicca su "Genera LaTeX" per vedere l'anteprima visuale</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
