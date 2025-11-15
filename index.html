@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX Editor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LaTeX Editor</h1>
+            <div class="toolbar">
+                <button id="compileBtn" class="btn btn-primary">Compila PDF</button>
+                <button id="saveBtn" class="btn btn-secondary">Salva .tex</button>
+                <button id="loadBtn" class="btn btn-secondary">Carica .tex</button>
+                <input type="file" id="fileInput" accept=".tex" style="display: none;">
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <h2>Editor LaTeX</h2>
+                </div>
+                <textarea id="editor"></textarea>
+            </div>
+
+            <div class="preview-panel">
+                <div class="panel-header">
+                    <h2>Preview PDF</h2>
+                </div>
+                <div id="preview">
+                    <div class="preview-placeholder">
+                        <p>Clicca su "Compila PDF" per vedere l'anteprima del documento</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/stex/stex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
