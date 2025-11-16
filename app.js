@@ -137,6 +137,10 @@ function setupEventListeners() {
     document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
     document.getElementById('compactBtn').addEventListener('click', toggleCompactMode);
 
+    // Editor LaTeX edit/import
+    document.getElementById('editableToggle').addEventListener('change', toggleLatexEdit);
+    document.getElementById('importLatexBtn').addEventListener('click', importLatexToForm);
+
     // Chiudi dropdown quando si clicca fuori
     document.addEventListener('click', () => {
         document.getElementById('presetsMenu').classList.remove('show');
@@ -330,17 +334,43 @@ function generateLatex() {
         descrittoriRows = 'Inserisci descrittori                                        & $\\_\\_\\_\\_$/10            \\\\ \\hline\n';
     }
 
+    // Calcola il totale dei punti dai descrittori
+    let totalePunti = 0;
+    descrittori.forEach(d => {
+        if (d.punti) {
+            totalePunti += parseInt(d.punti) || 0;
+        }
+    });
+
+    // Calcola la formula per \totpunti[]
+    const votoMinimo = parseFloat(document.getElementById('votoMinimo')?.value);
+    let totpuntiFormula = '';
+
+    if (votoMinimo && votoMinimo > 0 && totalePunti > 0) {
+        // Formula: [/totalePunti*(10-votoMin)/votoMin+1]
+        totpuntiFormula = `[/${totalePunti}*(10-${votoMinimo})/${votoMinimo}+1]`;
+    } else if (totalePunti > 0) {
+        // Formula semplice: [/totalePunti*10]
+        totpuntiFormula = `[/${totalePunti}*10]`;
+    } else {
+        // Default se non ci sono descrittori
+        totpuntiFormula = '[]';
+    }
+
     // Sostituisci i placeholder nel template
     let latex = currentTemplate
         .replace('{{TEMPO}}', tempo)
         .replace('{{DOCENTE}}', docente)
         .replace('{{CONSEGNA}}', consegna)
         .replace('{{ESERCIZI}}', eserciziText)
-        .replace('{{DESCRITTORI_ROWS}}', descrittoriRows);
+        .replace('{{DESCRITTORI_ROWS}}', descrittoriRows)
+        .replace('\\totpunti[]', `\\totpunti${totpuntiFormula}`);
 
-    // Mostra il codice LaTeX generato
+    // Mostra il codice LaTeX generato nel preview e nell'editor
     const preview = document.getElementById('latexPreview');
+    const editor = document.getElementById('latexEditor');
     preview.innerHTML = `<code>${escapeHtml(latex)}</code>`;
+    editor.value = latex;
 
     // Genera anche la preview visuale
     generateVisualPreview(tempo, docente, consegna);
@@ -577,6 +607,155 @@ function copyCode() {
             btn.textContent = originalText;
         }, 2000);
     });
+}
+
+// === LATEX EDITING & IMPORT ===
+function toggleLatexEdit() {
+    const checkbox = document.getElementById('editableToggle');
+    const preview = document.getElementById('latexPreview');
+    const editor = document.getElementById('latexEditor');
+
+    if (checkbox.checked) {
+        // Mostra editor
+        preview.style.display = 'none';
+        editor.style.display = 'block';
+        // Copia il contenuto del preview nell'editor
+        editor.value = preview.textContent;
+    } else {
+        // Mostra preview
+        editor.style.display = 'none';
+        preview.style.display = 'block';
+        // Aggiorna il preview con il contenuto modificato
+        preview.innerHTML = `<code>${escapeHtml(editor.value)}</code>`;
+    }
+}
+
+function importLatexToForm() {
+    // Ottieni il codice LaTeX dall'editor o dal preview
+    const editableToggle = document.getElementById('editableToggle');
+    let latexCode;
+
+    if (editableToggle.checked) {
+        latexCode = document.getElementById('latexEditor').value;
+    } else {
+        latexCode = document.getElementById('latexPreview').textContent;
+    }
+
+    if (!latexCode || latexCode === 'Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...') {
+        alert('Nessun codice LaTeX da importare. Genera prima il LaTeX o attiva la modalità modifica.');
+        return;
+    }
+
+    if (!confirm('Importare il codice LaTeX nei campi? Questo sovrascriverà i dati attuali.')) {
+        return;
+    }
+
+    try {
+        // Parse LaTeX code e riempi i campi
+        parseLatexToForm(latexCode);
+        alert('✅ Codice LaTeX importato con successo nei campi!');
+        saveState();
+    } catch (error) {
+        alert('❌ Errore durante l\'importazione: ' + error.message);
+        console.error('Import error:', error);
+    }
+}
+
+function parseLatexToForm(latex) {
+    // Estrai tempo
+    const tempoMatch = latex.match(/\\tempo\{([^}]+)\}/);
+    if (tempoMatch) {
+        document.getElementById('tempo').value = tempoMatch[1];
+    }
+
+    // Estrai docente
+    const docenteMatch = latex.match(/\\docente\{([^}]+)\}/);
+    if (docenteMatch) {
+        document.getElementById('docente').value = docenteMatch[1];
+    }
+
+    // Estrai items/esercizi dall'ambiente esercizi
+    const eserciziMatch = latex.match(/\\begin\{esercizi\}([\s\S]*?)\\end\{esercizi\}/);
+    if (eserciziMatch) {
+        const itemsText = eserciziMatch[1];
+        const itemMatches = itemsText.matchAll(/\\item\s+([\s\S]*?)(?=\\item|$)/g);
+
+        // Rimuovi tutti gli esercizi esistenti
+        esercizi.forEach(e => {
+            const item = document.getElementById(`esercizio-${e.id}`);
+            if (item) item.remove();
+        });
+        esercizi = [];
+        eserciziCounter = 1;
+
+        // Aggiungi esercizi dal LaTeX
+        for (const match of itemMatches) {
+            let fullText = match[1].trim();
+
+            // Controlla se c'è la stella
+            const stellaMatch = fullText.match(/^\(\$\\star\$\)\s*/);
+            const stella = !!stellaMatch;
+
+            if (stellaMatch) {
+                fullText = fullText.substring(stellaMatch[0].length);
+            }
+
+            // Rimuovi newlines e pulisci
+            fullText = fullText.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+            if (fullText) {
+                addEsercizio();
+                const lastEsercizio = esercizi[esercizi.length - 1];
+                document.getElementById(`esercizio-text-${lastEsercizio.id}`).value = fullText;
+                document.getElementById(`stella-${lastEsercizio.id}`).checked = stella;
+                lastEsercizio.testo = fullText;
+                lastEsercizio.stella = stella;
+            }
+        }
+    }
+
+    // Estrai griglia di valutazione
+    const tabulaMatch = latex.match(/\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/);
+    if (tabulaMatch) {
+        const rows = tabulaMatch[1].split('\\\\');
+
+        // Rimuovi tutti i descrittori esistenti
+        descrittori.forEach(d => {
+            const item = document.getElementById(`descrittore-${d.id}`);
+            if (item) item.remove();
+        });
+        descrittori = [];
+        descrittoreCounter = 1;
+
+        // Aggiungi descrittori dal LaTeX
+        for (const row of rows) {
+            const cells = row.split('&').map(c => c.trim());
+            if (cells.length >= 2 && cells[0] && !cells[0].includes('hline') && !cells[0].includes('textbf')) {
+                const descrittore = cells[0].replace(/\s+/g, ' ').trim();
+                const puntiMatch = cells[1].match(/\/(\d+)/);
+                const punti = puntiMatch ? puntiMatch[1] : '';
+
+                if (descrittore && punti) {
+                    addDescrittore();
+                    const lastDescrittore = descrittori[descrittori.length - 1];
+                    document.getElementById(`desc-${lastDescrittore.id}`).value = descrittore;
+                    document.getElementById(`punti-${lastDescrittore.id}`).value = punti;
+                    lastDescrittore.descrittore = descrittore;
+                    lastDescrittore.punti = punti;
+                }
+            }
+        }
+    }
+
+    // Estrai voto minimo da \totpunti[] se presente
+    const totpuntiMatch = latex.match(/\\totpunti\[\/\d+\*\(10-([0-9.]+)\)\/[0-9.]+\+1\]/);
+    if (totpuntiMatch) {
+        const votoMin = totpuntiMatch[1];
+        document.getElementById('votoMinimo').value = votoMin;
+    } else {
+        // Se usa la formula semplice, resetta voto minimo
+        document.getElementById('votoMinimo').value = '';
+    }
 }
 
 // === TEMPLATE MANAGEMENT ===

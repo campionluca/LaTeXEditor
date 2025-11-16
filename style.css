@@ -470,6 +470,51 @@ header h1 {
 
 .code-actions {
     margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.latex-editor {
+    width: 100%;
+    resize: vertical;
+    border: 2px solid #495057;
+    font-family: 'Courier New', monospace;
+    tab-size: 4;
+}
+
+.latex-editor:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.toggle-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    transition: background 0.3s;
+}
+
+.toggle-edit:hover {
+    background: #e9ecef;
+}
+
+.toggle-edit input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    color: white;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
 }
 
 @media (max-width: 1024px) {
@@ -1042,6 +1087,21 @@ body.dark-theme .pdf-table td {
 
 body.dark-theme .pdf-table th {
     background: #16213e;
+}
+
+body.dark-theme .latex-editor {
+    background: #1a1a2e;
+    color: #f8f8f2;
+    border-color: #495057;
+}
+
+body.dark-theme .toggle-edit {
+    background: #16213e;
+    color: #e9ecef;
+}
+
+body.dark-theme .toggle-edit:hover {
+    background: #1a1a2e;
 }
 
 body.dark-theme .tab-btn {
