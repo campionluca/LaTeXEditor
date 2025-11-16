@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LaTeX WYSIWYG Editor</title>
     <link rel="stylesheet" href="style.css">
+    <!-- MathJax for LaTeX rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
 </head>
 <body>
     <div class="container">
@@ -120,13 +131,12 @@
         </div>
 
         <!-- Suggestions Panel -->
-        <div id="suggestionsPanel" class="side-panel" style="left: -350px; right: auto;">
+        <div id="suggestionsPanel" class="side-panel">
             <div class="panel-header">
                 <h3>💡 Suggerimenti</h3>
                 <button class="btn-close" onclick="document.getElementById('suggestionsPanel').classList.remove('show')">✕</button>
             </div>
             <div class="panel-content">
-                <button class="suggestion-btn" onclick="openSuggestionsPanel()">💡 Mostra Suggerimenti</button>
                 <div id="suggestionsList"></div>
             </div>
         </div>

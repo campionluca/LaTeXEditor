@@ -349,55 +349,99 @@ function generateLatex() {
 function generateVisualPreview(tempo, docente, consegna) {
     const visualPreview = document.getElementById('visualPreview');
 
+    // Converti LaTeX in formato visualizzabile (mantieni formule matematiche)
+    function processLatexText(text) {
+        // Non escape HTML per permettere rendering formule matematiche
+        // Converti alcuni comandi LaTeX comuni in formato leggibile
+        return text
+            .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+            .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
+            .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
+            .replace(/\\section\{([^}]+)\}/g, '<h2>$1</h2>')
+            .replace(/\\subsection\{([^}]+)\}/g, '<h3>$1</h3>')
+            .replace(/\\begin\{itemize\}/g, '<ul>')
+            .replace(/\\end\{itemize\}/g, '</ul>')
+            .replace(/\\begin\{enumerate\}/g, '<ol>')
+            .replace(/\\end\{enumerate\}/g, '</ol>')
+            .replace(/\\item\s*/g, '<li>')
+            .replace(/\\\\/g, '<br>')
+            .replace(/~/g, '&nbsp;');
+    }
+
     let eserciziHTML = '';
     esercizi.forEach((e, index) => {
         if (e.testo) {
-            const stellaSymbol = e.stella ? '(★) ' : '';
-            eserciziHTML += `<div class="exercise-item">${index + 1}. ${stellaSymbol}${escapeHtml(e.testo)}</div>`;
+            const stellaSymbol = e.stella ? '⭐ ' : '';
+            eserciziHTML += `<div class="exercise-item"><strong>${index + 1}.</strong> ${stellaSymbol}${processLatexText(e.testo)}</div>`;
         }
     });
 
     let descrittoriHTML = '';
+    let totPunti = 0;
     descrittori.forEach(d => {
         if (d.descrittore && d.punti) {
+            totPunti += parseInt(d.punti) || 0;
             descrittoriHTML += `
                 <tr>
-                    <td>${escapeHtml(d.descrittore)}</td>
-                    <td>____/${d.punti}</td>
+                    <td>${processLatexText(d.descrittore)}</td>
+                    <td class="points-cell">____/${d.punti}</td>
                 </tr>
             `;
         }
     });
 
     visualPreview.innerHTML = `
-        <h1>Verifica</h1>
-        <div class="doc-meta">
-            <div>Tempo: ${escapeHtml(tempo)}</div>
-            <div>Docente: ${escapeHtml(docente)}</div>
-            <div>Nome: _________________________</div>
-        </div>
+        <div class="latex-preview-document">
+            <div class="latex-header">
+                <h1 class="latex-title">Verifica</h1>
+                <div class="latex-metadata">
+                    <div class="meta-row"><strong>Tempo:</strong> ${processLatexText(tempo)}</div>
+                    <div class="meta-row"><strong>Docente:</strong> ${processLatexText(docente)}</div>
+                    <div class="meta-row"><strong>Nome e Cognome:</strong> _____________________________</div>
+                </div>
+            </div>
 
-        <div class="section">
-            <h3>Esercizi</h3>
-            <div class="exercise-item">${escapeHtml(consegna)}</div>
-            ${eserciziHTML}
-        </div>
+            <div class="latex-section">
+                <h2 class="latex-section-title">Consegna</h2>
+                <div class="latex-content">${processLatexText(consegna)}</div>
+            </div>
 
-        <div class="section">
-            <h3>Griglia di Valutazione</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Descrittore</th>
-                        <th>Punti ottenuti</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${descrittoriHTML}
-                </tbody>
-            </table>
+            ${esercizi.length > 0 ? `
+            <div class="latex-section">
+                <h2 class="latex-section-title">Esercizi</h2>
+                <div class="latex-exercises">
+                    ${eserciziHTML}
+                </div>
+            </div>
+            ` : ''}
+
+            ${descrittori.length > 0 ? `
+            <div class="latex-section">
+                <h2 class="latex-section-title">Griglia di Valutazione</h2>
+                <table class="latex-table">
+                    <thead>
+                        <tr>
+                            <th>Descrittore</th>
+                            <th style="width: 120px;">Punti</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${descrittoriHTML}
+                        <tr class="total-row">
+                            <td><strong>TOTALE</strong></td>
+                            <td class="points-cell"><strong>____/${totPunti}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            ` : ''}
         </div>
     `;
+
+    // Riprocessa MathJax per renderizzare le formule matematiche
+    if (typeof MathJax !== 'undefined') {
+        MathJax.typesetPromise([visualPreview]).catch((err) => console.log('MathJax error:', err));
+    }
 }
 
 // === DOWNLOAD & COPY ===
