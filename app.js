@@ -363,7 +363,7 @@ function generateLatex() {
             // Converti newline JavaScript in newline LaTeX
             const testoLatex = e.testo.replace(/\n/g, '\\\\ ');
             // Aggiungi \punti{1} ad ogni esercizio
-            eserciziText += `    \\item ${prefix}${testoLatex} \\punti{1}\\n`;
+            eserciziText += `    \\item ${prefix}${testoLatex} \\punti{1}\n`;
             numEserciziCompilati++;
         }
     });
