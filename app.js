@@ -344,7 +344,7 @@ function updateDescrittore(id) {
 function generateLatex() {
     const tempo = document.getElementById('tempo').value || '100 minuti';
     const docente = document.getElementById('docente').value || 'Proff. Luca Campion, Riccardo Rossi';
-    const consegna = document.getElementById('consegna').value || 'Inserisci la consegna';
+    const consegna = document.getElementById('consegna').value || '';
     const tipoIntestazione = document.getElementById('tipoIntestazione')?.value || 'semplice';
 
     // Mappa tipo intestazione al comando LaTeX
@@ -451,8 +451,8 @@ ${descrittoriRows}
 
     // Formatta la consegna generale
     let consegnaLatex = '';
-    if (consegna && consegna.trim() !== '' && consegna !== 'Inserisci la consegna') {
-        consegnaLatex = `\\noindent\\textbf{Consegna:} ${consegna}\n\n\\vspace{0.3cm}`;
+    if (consegna && consegna.trim() !== '') {
+        consegnaLatex = `\\noindent\\textbf{Consegna:} ${consegna}\n\n\\vspace{0.3cm}\n`;
     }
 
     // Sostituisci i placeholder nel template
