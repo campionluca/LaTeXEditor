@@ -38,7 +38,6 @@ let currentTemplate = `\\documentclass{verifica}
 \\usepackage{eurosym}
 \\tempo{{{TEMPO}}}
 \\docente{{{DOCENTE}}}
-\\lineanome
 
 \\begin{document}
 
