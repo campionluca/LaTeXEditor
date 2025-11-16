@@ -153,12 +153,20 @@
                 <div class="form-section">
                     <h3>Informazioni Generali</h3>
                     <div class="form-group">
-                        <label for="tempo">Tempo:</label>
-                        <input type="text" id="tempo" placeholder="es. 100 minuti">
+                        <label for="tempo">Tempo (minuti):</label>
+                        <input type="number" id="tempo" placeholder="es. 100" min="1" step="1">
                     </div>
                     <div class="form-group">
                         <label for="docente">Docente/i:</label>
-                        <input type="text" id="docente" placeholder="es. Prof. Mario Rossi">
+                        <div style="display: flex; gap: 10px;">
+                            <select id="titoloDocente" style="width: 120px;">
+                                <option value="Prof.">Prof.</option>
+                                <option value="Proff." selected>Proff.</option>
+                                <option value="Prof.ssa">Prof.ssa</option>
+                                <option value="Prof.sse">Prof.sse</option>
+                            </select>
+                            <input type="text" id="docente" placeholder="es. Luca Campion, Riccardo Rossi" style="flex: 1;">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="tipoIntestazione">Tipo Intestazione:</label>
