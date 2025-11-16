@@ -98,6 +98,32 @@ function setupEventListeners() {
     document.getElementById('redoBtn').addEventListener('click', redo);
     document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
 
+    // Nuovi pulsanti
+    document.getElementById('printBtn').addEventListener('click', printDocument);
+    document.getElementById('statsBtn').addEventListener('click', toggleStats);
+    document.getElementById('closeStatsBtn').addEventListener('click', () => {
+        document.getElementById('statsPanel').classList.remove('show');
+    });
+
+    // Template preimpostati
+    document.getElementById('presetsBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('presetsMenu').classList.toggle('show');
+    });
+
+    document.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            const preset = e.target.dataset.preset;
+            loadPreset(preset);
+            document.getElementById('presetsMenu').classList.remove('show');
+        });
+    });
+
+    // Chiudi dropdown quando si clicca fuori
+    document.addEventListener('click', () => {
+        document.getElementById('presetsMenu').classList.remove('show');
+    });
+
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -110,6 +136,9 @@ function setupEventListeners() {
     document.getElementById('tempo').addEventListener('input', scheduleAutosave);
     document.getElementById('docente').addEventListener('input', scheduleAutosave);
     document.getElementById('consegna').addEventListener('input', scheduleAutosave);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeyboardShortcuts);
 
     // Salva stato iniziale
     saveState();
@@ -128,7 +157,10 @@ function addEsercizio() {
     item.innerHTML = `
         <h4>
             Esercizio #${id}
-            <button class="btn btn-danger btn-small" onclick="removeEsercizio(${id})">🗑️ Rimuovi</button>
+            <div>
+                <button class="btn btn-secondary btn-small" onclick="duplicateEsercizio(${id})" title="Duplica esercizio">📋 Duplica</button>
+                <button class="btn btn-danger btn-small" onclick="removeEsercizio(${id})">🗑️ Rimuovi</button>
+            </div>
         </h4>
         <div class="form-group">
             <label>
@@ -180,7 +212,10 @@ function addDescrittore() {
     item.innerHTML = `
         <h4>
             Descrittore #${id}
-            <button class="btn btn-danger btn-small" onclick="removeDescrittore(${id})">🗑️ Rimuovi</button>
+            <div>
+                <button class="btn btn-secondary btn-small" onclick="duplicateDescrittore(${id})" title="Duplica descrittore">📋 Duplica</button>
+                <button class="btn btn-danger btn-small" onclick="removeDescrittore(${id})">🗑️ Rimuovi</button>
+            </div>
         </h4>
         <div class="descrittore-fields">
             <div class="form-group">
@@ -805,6 +840,332 @@ function switchTab(tabName) {
     // Add active class to selected tab and content
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(`${tabName}Tab`).classList.add('active');
+}
+
+// === DUPLICATE FUNCTIONS ===
+function duplicateEsercizio(id) {
+    const sourceText = document.getElementById(`esercizio-text-${id}`)?.value || '';
+    const sourceStella = document.getElementById(`stella-${id}`)?.checked || false;
+
+    addEsercizio();
+    const newId = eserciziCounter - 1;
+
+    setTimeout(() => {
+        document.getElementById(`esercizio-text-${newId}`).value = sourceText;
+        document.getElementById(`stella-${newId}`).checked = sourceStella;
+        updateEsercizio(newId);
+        saveState();
+    }, 0);
+}
+
+function duplicateDescrittore(id) {
+    const sourceDesc = document.getElementById(`desc-${id}`)?.value || '';
+    const sourcePunti = document.getElementById(`punti-${id}`)?.value || '';
+
+    addDescrittore();
+    const newId = descrittoreCounter - 1;
+
+    setTimeout(() => {
+        document.getElementById(`desc-${newId}`).value = sourceDesc;
+        document.getElementById(`punti-${newId}`).value = sourcePunti;
+        updateDescrittore(newId);
+        saveState();
+    }, 0);
+}
+
+// === KEYBOARD SHORTCUTS ===
+function handleKeyboardShortcuts(e) {
+    // Ctrl/Cmd + S - Download LaTeX
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        downloadLatex();
+        return;
+    }
+
+    // Ctrl/Cmd + G - Generate LaTeX
+    if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+        e.preventDefault();
+        generateLatex();
+        return;
+    }
+
+    // Ctrl/Cmd + Z - Undo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undo();
+        return;
+    }
+
+    // Ctrl/Cmd + Y - Redo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        redo();
+        return;
+    }
+
+    // Ctrl/Cmd + P - Print
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        printDocument();
+        return;
+    }
+
+    // Ctrl/Cmd + E - Export JSON
+    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        exportProject();
+        return;
+    }
+
+    // F1 - Toggle shortcuts help
+    if (e.key === 'F1') {
+        e.preventDefault();
+        document.getElementById('shortcutsHelp').classList.toggle('show');
+        return;
+    }
+}
+
+// === PRINT ===
+function printDocument() {
+    // Genera il LaTeX se non è stato ancora generato
+    const latexCode = document.getElementById('latexPreview').textContent;
+    if (latexCode === 'Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...') {
+        generateLatex();
+    }
+
+    // Passa alla tab visuale prima di stampare
+    switchTab('visual');
+
+    // Attendi un momento per il rendering e poi stampa
+    setTimeout(() => {
+        window.print();
+    }, 100);
+}
+
+// === STATISTICS ===
+function toggleStats() {
+    const panel = document.getElementById('statsPanel');
+    const isShowing = panel.classList.contains('show');
+
+    if (!isShowing) {
+        calculateStatistics();
+    }
+
+    panel.classList.toggle('show');
+}
+
+function calculateStatistics() {
+    // Conta esercizi
+    const numEsercizi = esercizi.filter(e => {
+        const text = document.getElementById(`esercizio-text-${e.id}`)?.value || '';
+        return text.trim().length > 0;
+    }).length;
+
+    // Conta descrittori
+    const numDescrittori = descrittori.filter(d => {
+        const desc = document.getElementById(`desc-${d.id}`)?.value || '';
+        const punti = document.getElementById(`punti-${d.id}`)?.value || '';
+        return desc.trim().length > 0 && punti.trim().length > 0;
+    }).length;
+
+    // Calcola punteggio totale
+    let punteggioTotale = 0;
+    descrittori.forEach(d => {
+        const punti = parseInt(document.getElementById(`punti-${d.id}`)?.value || '0');
+        if (!isNaN(punti)) {
+            punteggioTotale += punti;
+        }
+    });
+
+    // Ottieni tempo
+    const tempo = document.getElementById('tempo').value || '-';
+
+    // Aggiorna UI
+    document.getElementById('statEsercizi').textContent = numEsercizi;
+    document.getElementById('statDescrittori').textContent = numDescrittori;
+    document.getElementById('statPunteggio').textContent = punteggioTotale;
+    document.getElementById('statTempo').textContent = tempo;
+
+    // Validazione e warnings
+    const warnings = validateForm();
+    const warningSection = document.getElementById('warningSection');
+    const warningList = document.getElementById('warningList');
+
+    if (warnings.length > 0) {
+        warningList.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
+        warningSection.style.display = 'block';
+    } else {
+        warningSection.style.display = 'none';
+    }
+}
+
+function validateForm() {
+    const warnings = [];
+
+    // Verifica tempo
+    const tempo = document.getElementById('tempo').value;
+    if (!tempo || tempo.trim().length === 0) {
+        warnings.push('Il tempo non è specificato');
+    }
+
+    // Verifica docente
+    const docente = document.getElementById('docente').value;
+    if (!docente || docente.trim().length === 0) {
+        warnings.push('Il docente non è specificato');
+    }
+
+    // Verifica consegna
+    const consegna = document.getElementById('consegna').value;
+    if (!consegna || consegna.trim().length === 0) {
+        warnings.push('La consegna generale è vuota');
+    }
+
+    // Verifica esercizi
+    const eserciziVuoti = esercizi.filter(e => {
+        const text = document.getElementById(`esercizio-text-${e.id}`)?.value || '';
+        return text.trim().length === 0;
+    }).length;
+
+    if (eserciziVuoti > 0) {
+        warnings.push(`${eserciziVuoti} esercizio/i vuoto/i`);
+    }
+
+    if (esercizi.length === 0) {
+        warnings.push('Nessun esercizio aggiunto');
+    }
+
+    // Verifica descrittori
+    const descrittoriIncompleti = descrittori.filter(d => {
+        const desc = document.getElementById(`desc-${d.id}`)?.value || '';
+        const punti = document.getElementById(`punti-${d.id}`)?.value || '';
+        return desc.trim().length === 0 || punti.trim().length === 0;
+    }).length;
+
+    if (descrittoriIncompleti > 0) {
+        warnings.push(`${descrittoriIncompleti} descrittore/i incompleto/i`);
+    }
+
+    if (descrittori.length === 0) {
+        warnings.push('Nessun descrittore aggiunto');
+    }
+
+    return warnings;
+}
+
+// === TEMPLATE PRESETS ===
+const presets = {
+    matematica: {
+        tempo: '60 minuti',
+        docente: 'Prof. Matematica',
+        consegna: 'Svolgere gli esercizi mostrando tutti i passaggi. Non è consentito l\'uso della calcolatrice.',
+        esercizi: [
+            { testo: 'Risolvi la seguente equazione di secondo grado: x² - 5x + 6 = 0', stella: false },
+            { testo: 'Calcola il limite: lim(x→∞) (3x² + 2x - 1)/(x² + 1)', stella: true }
+        ],
+        descrittori: [
+            { descrittore: 'Correttezza del procedimento', punti: '15' },
+            { descrittore: 'Correttezza del risultato', punti: '10' },
+            { descrittore: 'Chiarezza espositiva', punti: '5' }
+        ]
+    },
+    italiano: {
+        tempo: '90 minuti',
+        docente: 'Prof. Italiano',
+        consegna: 'Leggi attentamente il testo e rispondi alle domande seguenti in modo completo ed esauriente.',
+        esercizi: [
+            { testo: 'Analizza la struttura narrativa del brano proposto', stella: false },
+            { testo: 'Commenta lo stile e le figure retoriche utilizzate dall\'autore', stella: true }
+        ],
+        descrittori: [
+            { descrittore: 'Comprensione del testo', punti: '12' },
+            { descrittore: 'Capacità di analisi', punti: '10' },
+            { descrittore: 'Proprietà di linguaggio', punti: '8' }
+        ]
+    },
+    scienze: {
+        tempo: '75 minuti',
+        docente: 'Prof. Scienze',
+        consegna: 'Rispondi alle domande in modo chiaro e preciso, utilizzando la terminologia scientifica appropriata.',
+        esercizi: [
+            { testo: 'Descrivi il ciclo dell\'acqua e le sue fasi principali', stella: false },
+            { testo: 'Spiega il processo di fotosintesi clorofilliana', stella: true }
+        ],
+        descrittori: [
+            { descrittore: 'Conoscenza dei contenuti', punti: '14' },
+            { descrittore: 'Uso del linguaggio scientifico', punti: '8' },
+            { descrittore: 'Capacità di sintesi', punti: '8' }
+        ]
+    },
+    informatica: {
+        tempo: '60 minuti',
+        docente: 'Prof. Informatica',
+        consegna: 'Risolvi gli esercizi di programmazione mostrando il codice e spiegando la logica utilizzata.',
+        esercizi: [
+            { testo: 'Scrivi una funzione che calcoli il fattoriale di un numero', stella: false },
+            { testo: 'Implementa un algoritmo di ordinamento (bubble sort o selection sort)', stella: true }
+        ],
+        descrittori: [
+            { descrittore: 'Correttezza del codice', punti: '15' },
+            { descrittore: 'Efficienza dell\'algoritmo', punti: '10' },
+            { descrittore: 'Chiarezza dei commenti', punti: '5' }
+        ]
+    }
+};
+
+function loadPreset(presetName) {
+    const preset = presets[presetName];
+    if (!preset) return;
+
+    if (!confirm(`Caricare il template "${presetName}"? Tutti i dati non salvati andranno persi.`)) {
+        return;
+    }
+
+    // Imposta i valori di base
+    document.getElementById('tempo').value = preset.tempo;
+    document.getElementById('docente').value = preset.docente;
+    document.getElementById('consegna').value = preset.consegna;
+
+    // Rimuovi esercizi esistenti
+    esercizi.forEach(e => {
+        const item = document.getElementById(`esercizio-${e.id}`);
+        if (item) item.remove();
+    });
+    esercizi = [];
+    eserciziCounter = 1;
+
+    // Aggiungi nuovi esercizi
+    preset.esercizi.forEach(e => {
+        addEsercizio();
+        const currentId = eserciziCounter - 1;
+        setTimeout(() => {
+            document.getElementById(`esercizio-text-${currentId}`).value = e.testo;
+            document.getElementById(`stella-${currentId}`).checked = e.stella;
+            updateEsercizio(currentId);
+        }, 0);
+    });
+
+    // Rimuovi descrittori esistenti
+    descrittori.forEach(d => {
+        const item = document.getElementById(`descrittore-${d.id}`);
+        if (item) item.remove();
+    });
+    descrittori = [];
+    descrittoreCounter = 1;
+
+    // Aggiungi nuovi descrittori
+    preset.descrittori.forEach(d => {
+        addDescrittore();
+        const currentId = descrittoreCounter - 1;
+        setTimeout(() => {
+            document.getElementById(`desc-${currentId}`).value = d.descrittore;
+            document.getElementById(`punti-${currentId}`).value = d.punti;
+            updateDescrittore(currentId);
+        }, 0);
+    });
+
+    setTimeout(() => {
+        saveState();
+    }, 100);
 }
 
 // === UTILITIES ===
