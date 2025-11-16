@@ -1256,26 +1256,8 @@ function switchTab(tabName) {
 // === PDF COMPILATION ===
 let currentPdfBlob = null;
 
-// Inizializza SwiftLaTeX engine (una sola volta)
-let swiftlatexEngine = null;
-
-async function initSwiftLaTeX() {
-    if (swiftlatexEngine) return swiftlatexEngine;
-
-    try {
-        showToast('Inizializzazione compilatore pdflatex...', 'info', 2000);
-
-        // Crea l'engine SwiftLaTeX
-        swiftlatexEngine = new PdfTeXEngine();
-        await swiftlatexEngine.loadEngine();
-
-        console.log('SwiftLaTeX engine inizializzato con successo');
-        return swiftlatexEngine;
-    } catch (error) {
-        console.error('Errore inizializzazione SwiftLaTeX:', error);
-        throw new Error('Impossibile inizializzare il compilatore pdflatex');
-    }
-}
+// URL del backend (modificabile)
+const BACKEND_URL = 'http://localhost:5000';
 
 async function compilePDF(latexCode) {
     const pdfLoading = document.getElementById('pdfLoading');
@@ -1295,42 +1277,33 @@ async function compilePDF(latexCode) {
         // Converti il documento per essere compilabile con pdflatex
         const compilableLatex = convertToCompilableLatex(latexCode);
 
-        // Inizializza SwiftLaTeX se necessario
-        const engine = await initSwiftLaTeX();
+        // Chiama il backend locale per la compilazione
+        const response = await fetch(`${BACKEND_URL}/compile`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                latex: compilableLatex
+            })
+        });
 
-        // Scrivi il file LaTeX nell'engine
-        engine.writeMemFSFile('main.tex', compilableLatex);
-
-        // Compila con pdflatex
-        showToast('Esecuzione pdflatex...', 'info', 2000);
-        const result = await engine.compileLaTeX();
-
-        if (result.status === 0) {
-            // Compilazione riuscita - leggi il PDF
-            const pdfData = engine.readMemFSFile('main.pdf');
-
-            if (!pdfData || pdfData.length === 0) {
-                throw new Error('PDF generato vuoto');
-            }
-
-            // Crea blob dal PDF
-            const pdfBlob = new Blob([pdfData], { type: 'application/pdf' });
-            currentPdfBlob = pdfBlob;
-
-            // Mostra il PDF
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            pdfViewer.src = pdfUrl;
-            pdfLoading.style.display = 'none';
-            pdfViewer.style.display = 'block';
-
-            showToast('✅ PDF compilato con successo tramite pdflatex!', 'success', 4000);
-        } else {
-            // Errore di compilazione LaTeX
-            const log = engine.readMemFSFile('main.log');
-            const logText = new TextDecoder().decode(log);
-
-            throw new Error('Errori nella compilazione LaTeX. Controlla il codice LaTeX generato.');
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Errore durante la compilazione');
         }
+
+        // Ottieni il PDF come blob
+        const pdfBlob = await response.blob();
+        currentPdfBlob = pdfBlob;
+
+        // Mostra il PDF
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        pdfViewer.src = pdfUrl;
+        pdfLoading.style.display = 'none';
+        pdfViewer.style.display = 'block';
+
+        showToast('✅ PDF compilato con successo tramite pdflatex!', 'success', 4000);
 
     } catch (error) {
         console.error('Errore compilazione PDF:', error);
@@ -1339,16 +1312,34 @@ async function compilePDF(latexCode) {
         pdfError.style.display = 'flex';
 
         const errorMsg = document.getElementById('pdfErrorMessage');
-        errorMsg.innerHTML = `
-            <strong>❌ Errore durante la compilazione pdflatex</strong><br><br>
-            ${error.message}<br><br>
-            <strong>Cosa fare:</strong><br>
-            • Controlla che tutti i campi siano compilati correttamente<br>
-            • Scarica il file .tex e controlla gli errori di compilazione<br>
-            • Riprova la compilazione
-        `;
 
-        showToast('Errore compilazione pdflatex: ' + error.message, 'error', 6000);
+        // Controlla se il backend non è raggiungibile
+        if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+            errorMsg.innerHTML = `
+                <strong>❌ Backend non raggiungibile</strong><br><br>
+                Il server backend per la compilazione pdflatex non è attivo.<br><br>
+                <strong>Per avviare il backend:</strong><br>
+                1. Apri un terminale nella cartella del progetto<br>
+                2. Installa le dipendenze: <code>pip install -r requirements.txt</code><br>
+                3. Avvia il server: <code>python backend.py</code><br>
+                4. Il backend sarà disponibile su http://localhost:5000<br><br>
+                <strong>Requisiti:</strong><br>
+                • Python 3.x installato<br>
+                • pdflatex installato (TexLive o MiKTeX)
+            `;
+        } else {
+            errorMsg.innerHTML = `
+                <strong>❌ Errore durante la compilazione pdflatex</strong><br><br>
+                ${escapeHtml(error.message)}<br><br>
+                <strong>Cosa fare:</strong><br>
+                • Controlla che tutti i campi siano compilati correttamente<br>
+                • Scarica il file .tex e controlla gli errori di compilazione<br>
+                • Verifica che pdflatex sia installato sul sistema<br>
+                • Riprova la compilazione
+            `;
+        }
+
+        showToast('Errore compilazione pdflatex', 'error', 6000);
     }
 }
 
