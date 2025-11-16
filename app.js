@@ -414,6 +414,12 @@ function generateLatex() {
 
     // Genera anche la preview visuale
     generateVisualPreview(tempo, docente, consegna);
+
+    // Compila il PDF e mostralo
+    compilePDF(latex);
+
+    // Passa automaticamente al tab PDF
+    switchTab('pdf');
 }
 
 function generateVisualPreview(tempo, docente, consegna) {
@@ -1245,6 +1251,67 @@ function switchTab(tabName) {
     // Add active class to selected tab and content
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(`${tabName}Tab`).classList.add('active');
+}
+
+// === PDF COMPILATION ===
+let currentPdfBlob = null;
+
+async function compilePDF(latexCode) {
+    const pdfLoading = document.getElementById('pdfLoading');
+    const pdfError = document.getElementById('pdfError');
+    const pdfViewer = document.getElementById('pdfViewer');
+    const pdfPlaceholder = document.getElementById('pdfPlaceholder');
+
+    // Nascondi tutti gli elementi e mostra loading
+    pdfPlaceholder.style.display = 'none';
+    pdfError.style.display = 'none';
+    pdfViewer.style.display = 'none';
+    pdfLoading.style.display = 'flex';
+
+    try {
+        showToast('Compilazione PDF in corso...', 'info', 2000);
+
+        // Usa LaTeX.Online API per compilare il PDF
+        const response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(latexCode), {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            throw new Error(`Errore HTTP: ${response.status}`);
+        }
+
+        const pdfBlob = await response.blob();
+        currentPdfBlob = pdfBlob;
+
+        // Crea URL per il PDF e mostralo nell'iframe
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        pdfViewer.src = pdfUrl;
+
+        // Nascondi loading e mostra viewer
+        pdfLoading.style.display = 'none';
+        pdfViewer.style.display = 'block';
+
+        showToast('PDF compilato con successo!', 'success');
+
+    } catch (error) {
+        console.error('Errore compilazione PDF:', error);
+
+        pdfLoading.style.display = 'none';
+        pdfError.style.display = 'flex';
+
+        const errorMsg = document.getElementById('pdfErrorMessage');
+        errorMsg.textContent = `Si è verificato un errore durante la compilazione del PDF: ${error.message}. ` +
+                               `Questo potrebbe essere dovuto alla classe LaTeX "verifica" non supportata dal servizio online. ` +
+                               `Puoi comunque scaricare il file .tex e compilarlo localmente.`;
+
+        showToast('Errore nella compilazione PDF', 'error');
+    }
+}
+
+function retryPdfCompilation() {
+    const latexCode = document.getElementById('latexEditor').value ||
+                     document.getElementById('latexPreview').textContent;
+    compilePDF(latexCode);
 }
 
 // === DUPLICATE FUNCTIONS ===
