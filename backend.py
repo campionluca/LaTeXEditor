@@ -60,13 +60,18 @@ def compile_latex():
 
                 return jsonify({'error': error_msg}), 500
 
-            # Restituisci il PDF
-            return send_file(
-                pdf_path,
-                mimetype='application/pdf',
-                as_attachment=False,
-                download_name='verifica.pdf'
-            )
+            # Leggi il PDF in memoria prima che tmpdir venga cancellato
+            with open(pdf_path, 'rb') as pdf_file:
+                pdf_data = pdf_file.read()
+
+        # Restituisci il PDF dalla memoria (fuori dal context manager)
+        from io import BytesIO
+        return send_file(
+            BytesIO(pdf_data),
+            mimetype='application/pdf',
+            as_attachment=False,
+            download_name='verifica.pdf'
+        )
 
     except subprocess.TimeoutExpired:
         return jsonify({'error': 'Timeout durante la compilazione'}), 500
