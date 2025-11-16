@@ -44,17 +44,9 @@ let currentTemplate = `\\documentclass{verifica}
 {{INTESTAZIONE}}
 
 \\begin{esercizi}
-    \\item {{CONSEGNA}}
 {{ESERCIZI}}
 \\end{esercizi}
-\\begin{table}[H]
-    \\centering
-\\begin{tabular}{|l|c|c|}
-\\hline
-\\textbf{Descrittore}                          & \\textbf{Punti ottenuti} \\\\ \\hline
-{{DESCRITTORI_ROWS}}
-\\end{tabular}
-\\end{table}
+{{TABELLA}}
 \\totpunti[]
 \\end{document}
 `;
@@ -132,6 +124,19 @@ function setupEventListeners() {
     document.getElementById('undoBtn').addEventListener('click', undo);
     document.getElementById('redoBtn').addEventListener('click', redo);
     document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
+
+    // Checkbox mostra tabella descrittori
+    document.getElementById('mostraTabella').addEventListener('change', function() {
+        const container = document.getElementById('descrittoriContainer');
+        const btn = document.getElementById('addDescrittoreBtn');
+        if (this.checked) {
+            container.style.display = 'block';
+            btn.style.display = 'inline-block';
+        } else {
+            container.style.display = 'none';
+            btn.style.display = 'none';
+        }
+    });
 
     // Nuovi pulsanti
     document.getElementById('printBtn').addEventListener('click', printDocument);
@@ -351,42 +356,66 @@ function generateLatex() {
 
     // Genera la sezione esercizi
     let eserciziText = '';
+    let numEserciziCompilati = 0;
     esercizi.forEach(e => {
         if (e.testo) {
             const prefix = e.stella ? '($\\\\star$) ' : '';
             // Converti newline JavaScript in newline LaTeX
             const testoLatex = e.testo.replace(/\n/g, '\\\\ ');
-            eserciziText += `    ${prefix}${testoLatex}\\n`;
+            // Aggiungi \punti{1} ad ogni esercizio
+            eserciziText += `    \\item ${prefix}${testoLatex} \\punti{1}\\n`;
+            numEserciziCompilati++;
         }
     });
 
-    // Aggiorna i dati dei descrittori
-    descrittori.forEach(d => {
-        const desc = document.getElementById(`desc-${d.id}`)?.value || '';
-        const punti = document.getElementById(`punti-${d.id}`)?.value || '';
-        d.descrittore = desc;
-        d.punti = punti;
-    });
+    // Controlla se la tabella descrittori deve essere mostrata
+    const mostraTabella = document.getElementById('mostraTabella')?.checked;
 
-    // Genera le righe dei descrittori
     let descrittoriRows = '';
-    descrittori.forEach(d => {
-        if (d.descrittore && d.punti) {
-            descrittoriRows += `${d.descrittore}                                        & $\\_\\_\\_\\_$/${d.punti}            \\\\ \\hline\n`;
-        }
-    });
-
-    if (descrittoriRows === '') {
-        descrittoriRows = 'Inserisci descrittori                                        & $\\_\\_\\_\\_$/10            \\\\ \\hline\n';
-    }
-
-    // Calcola il totale dei punti dai descrittori
+    let tabellaLatex = '';
     let totalePunti = 0;
-    descrittori.forEach(d => {
-        if (d.punti) {
-            totalePunti += parseInt(d.punti) || 0;
+
+    if (mostraTabella) {
+        // Aggiorna i dati dei descrittori
+        descrittori.forEach(d => {
+            const desc = document.getElementById(`desc-${d.id}`)?.value || '';
+            const punti = document.getElementById(`punti-${d.id}`)?.value || '';
+            d.descrittore = desc;
+            d.punti = punti;
+        });
+
+        // Genera le righe dei descrittori
+        descrittori.forEach(d => {
+            if (d.descrittore && d.punti) {
+                descrittoriRows += `${d.descrittore}                                        & $\\_\\_\\_\\_$/${d.punti}            \\\\ \\hline\n`;
+                totalePunti += parseInt(d.punti) || 0;
+            }
+        });
+
+        // Aggiungi automaticamente il descrittore "Funzionamento" con somma punti esercizi
+        if (numEserciziCompilati > 0) {
+            descrittoriRows += `Funzionamento                                        & $\\_\\_\\_\\_$/${numEserciziCompilati}            \\\\ \\hline\n`;
+            totalePunti += numEserciziCompilati;
         }
-    });
+
+        if (descrittoriRows === '') {
+            descrittoriRows = 'Inserisci descrittori                                        & $\\_\\_\\_\\_$/10            \\\\ \\hline\n';
+            totalePunti = 10;
+        }
+
+        // Genera la tabella completa
+        tabellaLatex = `\\begin{table}[H]
+    \\centering
+\\begin{tabular}{|l|c|c|}
+\\hline
+\\textbf{Descrittore}                          & \\textbf{Punti ottenuti} \\\\ \\hline
+${descrittoriRows}
+\\end{tabular}
+\\end{table}`;
+    } else {
+        // Se la tabella non è mostrata, il totale è solo la somma degli esercizi
+        totalePunti = numEserciziCompilati;
+    }
 
     // Calcola la formula per \totpunti[] con voto max e min configurabili
     const votoMin = Math.round(parseFloat(document.getElementById('votoMinimo')?.value) || 0);
@@ -415,9 +444,8 @@ function generateLatex() {
         .replace('{{TEMPO}}', tempo)
         .replace('{{DOCENTE}}', docente)
         .replace('{{INTESTAZIONE}}', intestazioneCmd)
-        .replace('{{CONSEGNA}}', consegna)
         .replace('{{ESERCIZI}}', eserciziText)
-        .replace('{{DESCRITTORI_ROWS}}', descrittoriRows)
+        .replace('{{TABELLA}}', tabellaLatex)
         .replace('\\totpunti[]', `\\totpunti${totpuntiFormula}`);
 
     // Mostra il codice LaTeX generato nel preview e nell'editor
