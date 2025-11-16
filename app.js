@@ -1274,61 +1274,65 @@ async function compilePDF(latexCode) {
         // Converti il documento per essere compilabile con pdflatex
         const compilableLatex = convertToCompilableLatex(latexCode);
 
-        // Usa POST invece di GET per evitare URL troppo lunghi
-        const formData = new FormData();
-        formData.append('file', new Blob([compilableLatex], { type: 'text/plain' }), 'document.tex');
+        // Prova 1: Usa latexonline.cc con CORS
+        try {
+            const formData = new FormData();
+            formData.append('file', new Blob([compilableLatex], { type: 'text/plain' }), 'document.tex');
 
-        const response = await fetch('https://latexonline.cc/compile', {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (!response.ok) {
-            // Prova con un servizio alternativo se il primo fallisce
-            const altResponse = await fetch('https://texlive.net/cgi-bin/latexcgi', {
+            const response = await fetch('https://latexonline.cc/compile', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'filecontents=' + encodeURIComponent(compilableLatex) + '&filename=document.tex&engine=pdflatex'
+                mode: 'cors',
+                body: formData,
             });
 
-            if (!altResponse.ok) {
-                throw new Error(`Impossibile compilare il documento. Servizio temporaneamente non disponibile.`);
+            if (response.ok) {
+                const pdfBlob = await response.blob();
+                if (pdfBlob.size > 1000 && pdfBlob.type === 'application/pdf') {
+                    currentPdfBlob = pdfBlob;
+                    const pdfUrl = URL.createObjectURL(pdfBlob);
+                    pdfViewer.src = pdfUrl;
+                    pdfLoading.style.display = 'none';
+                    pdfViewer.style.display = 'block';
+                    showToast('PDF compilato con successo tramite pdflatex!', 'success');
+                    return;
+                }
             }
-
-            const pdfBlob = await altResponse.blob();
-            if (pdfBlob.size < 1000) {
-                throw new Error(`Output non valido dal servizio di compilazione`);
-            }
-
-            currentPdfBlob = pdfBlob;
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            pdfViewer.src = pdfUrl;
-            pdfLoading.style.display = 'none';
-            pdfViewer.style.display = 'block';
-            showToast('PDF compilato con successo tramite pdflatex!', 'success');
-            return;
+        } catch (corsError) {
+            console.warn('Tentativo diretto fallito:', corsError);
         }
 
-        const pdfBlob = await response.blob();
+        // Prova 2: Usa un proxy CORS
+        showToast('Tentativo con proxy CORS...', 'info', 2000);
+        try {
+            const formData = new FormData();
+            formData.append('file', new Blob([compilableLatex], { type: 'text/plain' }), 'document.tex');
 
-        // Verifica che sia un PDF valido
-        if (pdfBlob.size < 1000) {
-            throw new Error(`Compilazione fallita: output non valido`);
+            const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://latexonline.cc/compile');
+
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                const pdfBlob = await response.blob();
+                if (pdfBlob.size > 1000) {
+                    currentPdfBlob = pdfBlob;
+                    const pdfUrl = URL.createObjectURL(pdfBlob);
+                    pdfViewer.src = pdfUrl;
+                    pdfLoading.style.display = 'none';
+                    pdfViewer.style.display = 'block';
+                    showToast('PDF compilato con successo tramite proxy!', 'success');
+                    return;
+                }
+            }
+        } catch (proxyError) {
+            console.warn('Tentativo con proxy fallito:', proxyError);
         }
 
-        currentPdfBlob = pdfBlob;
-
-        // Crea URL per il PDF e mostralo nell'iframe
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        pdfViewer.src = pdfUrl;
-
-        // Nascondi loading e mostra viewer
-        pdfLoading.style.display = 'none';
-        pdfViewer.style.display = 'block';
-
-        showToast('PDF compilato con successo tramite pdflatex!', 'success');
+        // Fallback finale: genera PDF dall'anteprima HTML usando html2pdf.js
+        showToast('Generazione PDF dall\'anteprima...', 'info', 2000);
+        await generatePDFFromPreview();
 
     } catch (error) {
         console.error('Errore compilazione PDF:', error);
@@ -1338,11 +1342,40 @@ async function compilePDF(latexCode) {
 
         const errorMsg = document.getElementById('pdfErrorMessage');
         errorMsg.textContent = `Si è verificato un errore durante la compilazione PDF: ${error.message}. ` +
-                               `Il servizio online potrebbe essere temporaneamente non disponibile. ` +
+                               `I servizi online potrebbero essere temporaneamente non disponibili. ` +
                                `Scarica il file .tex e compilalo localmente con pdflatex.`;
 
         showToast('Errore nella compilazione PDF', 'error');
     }
+}
+
+async function generatePDFFromPreview() {
+    const visualPreview = document.getElementById('visualPreview');
+
+    if (!visualPreview || visualPreview.innerHTML.includes('preview-placeholder')) {
+        throw new Error('Genera prima l\'anteprima visuale');
+    }
+
+    const opt = {
+        margin: [15, 15, 15, 15],
+        filename: 'verifica.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    const pdfBlob = await html2pdf().from(visualPreview).set(opt).outputPdf('blob');
+    currentPdfBlob = pdfBlob;
+
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    const pdfViewer = document.getElementById('pdfViewer');
+    const pdfLoading = document.getElementById('pdfLoading');
+
+    pdfViewer.src = pdfUrl;
+    pdfLoading.style.display = 'none';
+    pdfViewer.style.display = 'block';
+
+    showToast('PDF generato dall\'anteprima (compilazione online non disponibile)', 'warning', 5000);
 }
 
 function convertToCompilableLatex(latexCode) {
