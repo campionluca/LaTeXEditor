@@ -137,6 +137,10 @@ function setupEventListeners() {
     document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
     document.getElementById('compactBtn').addEventListener('click', toggleCompactMode);
 
+    // Editor LaTeX edit/import
+    document.getElementById('editableToggle').addEventListener('change', toggleLatexEdit);
+    document.getElementById('importLatexBtn').addEventListener('click', importLatexToForm);
+
     // Chiudi dropdown quando si clicca fuori
     document.addEventListener('click', () => {
         document.getElementById('presetsMenu').classList.remove('show');
@@ -330,17 +334,43 @@ function generateLatex() {
         descrittoriRows = 'Inserisci descrittori                                        & $\\_\\_\\_\\_$/10            \\\\ \\hline\n';
     }
 
+    // Calcola il totale dei punti dai descrittori
+    let totalePunti = 0;
+    descrittori.forEach(d => {
+        if (d.punti) {
+            totalePunti += parseInt(d.punti) || 0;
+        }
+    });
+
+    // Calcola la formula per \totpunti[]
+    const votoMinimo = parseFloat(document.getElementById('votoMinimo')?.value);
+    let totpuntiFormula = '';
+
+    if (votoMinimo && votoMinimo > 0 && totalePunti > 0) {
+        // Formula: [/totalePunti*(10-votoMin)/votoMin+1]
+        totpuntiFormula = `[/${totalePunti}*(10-${votoMinimo})/${votoMinimo}+1]`;
+    } else if (totalePunti > 0) {
+        // Formula semplice: [/totalePunti*10]
+        totpuntiFormula = `[/${totalePunti}*10]`;
+    } else {
+        // Default se non ci sono descrittori
+        totpuntiFormula = '[]';
+    }
+
     // Sostituisci i placeholder nel template
     let latex = currentTemplate
         .replace('{{TEMPO}}', tempo)
         .replace('{{DOCENTE}}', docente)
         .replace('{{CONSEGNA}}', consegna)
         .replace('{{ESERCIZI}}', eserciziText)
-        .replace('{{DESCRITTORI_ROWS}}', descrittoriRows);
+        .replace('{{DESCRITTORI_ROWS}}', descrittoriRows)
+        .replace('\\totpunti[]', `\\totpunti${totpuntiFormula}`);
 
-    // Mostra il codice LaTeX generato
+    // Mostra il codice LaTeX generato nel preview e nell'editor
     const preview = document.getElementById('latexPreview');
+    const editor = document.getElementById('latexEditor');
     preview.innerHTML = `<code>${escapeHtml(latex)}</code>`;
+    editor.value = latex;
 
     // Genera anche la preview visuale
     generateVisualPreview(tempo, docente, consegna);
@@ -357,59 +387,187 @@ function generateVisualPreview(tempo, docente, consegna) {
         return;
     }
 
-    try {
-        // Usa LaTeX.js per compilare il documento LaTeX completo
-        if (typeof latexjs !== 'undefined') {
-            visualPreview.innerHTML = '<div class="latex-compiling">⏳ Compilazione LaTeX in corso...</div>';
+    // Parser LaTeX custom per simulare PDF compilato
+    function parseLatexDocument(latex) {
+        const doc = {
+            tempo: '',
+            docente: '',
+            nome: '',
+            cognome: '',
+            items: [],
+            griglia: []
+        };
 
-            // Compila il documento LaTeX in modo asincrono
-            setTimeout(() => {
-                try {
-                    const generator = latexjs.parse(latexCode, { generator: latexjs.HtmlGenerator });
-                    const compiledDocument = generator.domFragment();
+        // Estrai tempo e docente
+        const tempoMatch = latex.match(/\\tempo\{([^}]+)\}/);
+        const docenteMatch = latex.match(/\\docente\{([^}]+)\}/);
+        const nomeMatch = latex.match(/\\nome\{([^}]+)\}/);
+        const cognomeMatch = latex.match(/\\cognome\{([^}]+)\}/);
 
-                    // Pulisci e mostra il risultato
-                    visualPreview.innerHTML = '';
-                    visualPreview.appendChild(compiledDocument);
+        doc.tempo = tempoMatch ? tempoMatch[1] : '';
+        doc.docente = docenteMatch ? docenteMatch[1] : '';
+        doc.nome = nomeMatch ? nomeMatch[1] : '';
+        doc.cognome = cognomeMatch ? cognomeMatch[1] : '';
 
-                    // Aggiungi una classe per lo styling
-                    visualPreview.classList.add('latex-compiled');
-                } catch (innerError) {
-                    showCompilationError(innerError);
+        // Estrai items dall'ambiente esercizi o enumerate
+        const eserciziMatch = latex.match(/\\begin\{esercizi\}([\s\S]*?)\\end\{esercizi\}/);
+        const enumerateMatch = latex.match(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/);
+        const exerciseEnv = eserciziMatch || enumerateMatch;
+
+        if (exerciseEnv) {
+            const itemsText = exerciseEnv[1];
+            // Match items, gestendo sia \item testo che \item ($\star$) testo
+            const itemMatches = itemsText.matchAll(/\\item\s+([\s\S]*?)(?=\\item|$)/g);
+
+            for (const match of itemMatches) {
+                let fullText = match[1].trim();
+
+                // Controlla se c'è la stella all'inizio
+                const stellaMatch = fullText.match(/^\(\$\\star\$\)\s*/);
+                const stella = !!stellaMatch;
+
+                if (stellaMatch) {
+                    fullText = fullText.substring(stellaMatch[0].length);
                 }
-            }, 100);
-        } else {
-            // Fallback se LaTeX.js non è caricato
-            visualPreview.innerHTML = `
-                <div class="latex-error">
-                    <h3>⚠️ LaTeX.js non disponibile</h3>
-                    <p>La libreria di compilazione LaTeX non è ancora caricata. Ricarica la pagina.</p>
-                    <p style="margin-top: 20px; font-size: 12px; color: #666;">
-                        In alternativa, scarica il file .tex e compilalo con un compilatore LaTeX tradizionale.
-                    </p>
-                </div>
-            `;
+
+                // Rimuovi newlines multipli e pulisci
+                fullText = fullText.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+                if (fullText) {
+                    doc.items.push({ stella, text: fullText });
+                }
+            }
         }
-    } catch (error) {
-        showCompilationError(error);
+
+        // Estrai griglia di valutazione
+        const tabulaMatch = latex.match(/\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/);
+        if (tabulaMatch) {
+            const rows = tabulaMatch[1].split('\\\\').slice(1); // Salta header
+            for (const row of rows) {
+                const cells = row.split('&').map(c => c.trim());
+                if (cells.length >= 2 && cells[0] && !cells[0].includes('hline')) {
+                    const descrittore = cells[0].replace(/\s+/g, ' ').trim();
+                    const punti = cells[1].replace(/[^0-9]/g, '').trim();
+                    if (descrittore && punti) {
+                        doc.griglia.push({ descrittore, punti });
+                    }
+                }
+            }
+        }
+
+        return doc;
     }
 
-    function showCompilationError(error) {
-        // Mostra errore di compilazione
+    // Converti testo LaTeX in HTML (mantiene formule matematiche)
+    function convertLatexToHtml(text) {
+        return text
+            .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+            .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
+            .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
+            .replace(/\\emph\{([^}]+)\}/g, '<em>$1</em>')
+            .replace(/``/g, '"')
+            .replace(/''/g, '"')
+            .replace(/---/g, '—')
+            .replace(/--/g, '–')
+            .replace(/~/g, '&nbsp;')
+            .replace(/\\\\/g, '<br>');
+    }
+
+    try {
+        const parsedDoc = parseLatexDocument(latexCode);
+
+        // Costruisci HTML simile a PDF
+        let itemsHtml = '';
+        parsedDoc.items.forEach((item, index) => {
+            const stellaIcon = item.stella ? '<span class="stella-icon">★</span> ' : '';
+            itemsHtml += `
+                <div class="pdf-item">
+                    <span class="item-number">${index + 1}.</span>
+                    ${stellaIcon}
+                    <span class="item-text">${convertLatexToHtml(item.text)}</span>
+                </div>
+            `;
+        });
+
+        let grigliaHtml = '';
+        let totalePunti = 0;
+        parsedDoc.griglia.forEach(row => {
+            totalePunti += parseInt(row.punti) || 0;
+            grigliaHtml += `
+                <tr>
+                    <td>${convertLatexToHtml(row.descrittore)}</td>
+                    <td class="punti-cell">_____/${row.punti}</td>
+                </tr>
+            `;
+        });
+
+        visualPreview.innerHTML = `
+            <div class="pdf-document">
+                <div class="pdf-header">
+                    <h1 class="pdf-title">VERIFICA</h1>
+                    <div class="pdf-meta">
+                        <div class="meta-grid">
+                            <div><strong>Tempo a disposizione:</strong> ${convertLatexToHtml(parsedDoc.tempo)}</div>
+                            <div><strong>Insegnante:</strong> ${convertLatexToHtml(parsedDoc.docente)}</div>
+                        </div>
+                        <div class="meta-grid student-info">
+                            <div><strong>Nome:</strong> ${parsedDoc.nome || '_'.repeat(30)}</div>
+                            <div><strong>Cognome:</strong> ${parsedDoc.cognome || '_'.repeat(30)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${parsedDoc.items.length > 0 ? `
+                <div class="pdf-section">
+                    <div class="pdf-items">
+                        ${itemsHtml}
+                    </div>
+                </div>
+                ` : ''}
+
+                ${parsedDoc.griglia.length > 0 ? `
+                <div class="pdf-section griglia-section">
+                    <h2 class="section-title">GRIGLIA DI VALUTAZIONE</h2>
+                    <table class="pdf-table">
+                        <thead>
+                            <tr>
+                                <th>DESCRITTORE</th>
+                                <th style="width: 140px;">PUNTI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${grigliaHtml}
+                            <tr class="total-row">
+                                <td><strong>TOTALE</strong></td>
+                                <td class="punti-cell"><strong>_____/${totalePunti}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+        // Applica MathJax se disponibile
+        if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+            MathJax.typesetPromise([visualPreview]).catch((err) => console.log('MathJax error:', err));
+        }
+
+    } catch (error) {
         visualPreview.innerHTML = `
             <div class="latex-error">
-                <h3>❌ Errore di Compilazione LaTeX</h3>
-                <p><strong>Messaggio:</strong> ${escapeHtml(error.message)}</p>
+                <h3>⚠️ Errore nel rendering dell'anteprima</h3>
+                <p>Si è verificato un errore durante il parsing del documento LaTeX.</p>
                 <details style="margin-top: 15px;">
-                    <summary style="cursor: pointer; font-weight: bold;">Dettagli errore</summary>
-                    <pre style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px; font-size: 11px; overflow-x: auto;">${escapeHtml(error.stack || error.toString())}</pre>
+                    <summary style="cursor: pointer; font-weight: bold;">Dettagli tecnici</summary>
+                    <pre style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px; font-size: 11px; overflow-x: auto;">${escapeHtml(error.toString())}</pre>
                 </details>
                 <p style="margin-top: 20px; font-size: 12px; color: #666;">
-                    💡 Suggerimento: Verifica la sintassi LaTeX nel tab "Codice LaTeX" o scarica il file .tex per compilarlo esternamente.
+                    💡 Puoi comunque scaricare il file .tex e compilarlo esternamente.
                 </p>
             </div>
         `;
-        console.error('LaTeX compilation error:', error);
+        console.error('Preview rendering error:', error);
     }
 }
 
@@ -449,6 +607,155 @@ function copyCode() {
             btn.textContent = originalText;
         }, 2000);
     });
+}
+
+// === LATEX EDITING & IMPORT ===
+function toggleLatexEdit() {
+    const checkbox = document.getElementById('editableToggle');
+    const preview = document.getElementById('latexPreview');
+    const editor = document.getElementById('latexEditor');
+
+    if (checkbox.checked) {
+        // Mostra editor
+        preview.style.display = 'none';
+        editor.style.display = 'block';
+        // Copia il contenuto del preview nell'editor
+        editor.value = preview.textContent;
+    } else {
+        // Mostra preview
+        editor.style.display = 'none';
+        preview.style.display = 'block';
+        // Aggiorna il preview con il contenuto modificato
+        preview.innerHTML = `<code>${escapeHtml(editor.value)}</code>`;
+    }
+}
+
+function importLatexToForm() {
+    // Ottieni il codice LaTeX dall'editor o dal preview
+    const editableToggle = document.getElementById('editableToggle');
+    let latexCode;
+
+    if (editableToggle.checked) {
+        latexCode = document.getElementById('latexEditor').value;
+    } else {
+        latexCode = document.getElementById('latexPreview').textContent;
+    }
+
+    if (!latexCode || latexCode === 'Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...') {
+        alert('Nessun codice LaTeX da importare. Genera prima il LaTeX o attiva la modalità modifica.');
+        return;
+    }
+
+    if (!confirm('Importare il codice LaTeX nei campi? Questo sovrascriverà i dati attuali.')) {
+        return;
+    }
+
+    try {
+        // Parse LaTeX code e riempi i campi
+        parseLatexToForm(latexCode);
+        alert('✅ Codice LaTeX importato con successo nei campi!');
+        saveState();
+    } catch (error) {
+        alert('❌ Errore durante l\'importazione: ' + error.message);
+        console.error('Import error:', error);
+    }
+}
+
+function parseLatexToForm(latex) {
+    // Estrai tempo
+    const tempoMatch = latex.match(/\\tempo\{([^}]+)\}/);
+    if (tempoMatch) {
+        document.getElementById('tempo').value = tempoMatch[1];
+    }
+
+    // Estrai docente
+    const docenteMatch = latex.match(/\\docente\{([^}]+)\}/);
+    if (docenteMatch) {
+        document.getElementById('docente').value = docenteMatch[1];
+    }
+
+    // Estrai items/esercizi dall'ambiente esercizi
+    const eserciziMatch = latex.match(/\\begin\{esercizi\}([\s\S]*?)\\end\{esercizi\}/);
+    if (eserciziMatch) {
+        const itemsText = eserciziMatch[1];
+        const itemMatches = itemsText.matchAll(/\\item\s+([\s\S]*?)(?=\\item|$)/g);
+
+        // Rimuovi tutti gli esercizi esistenti
+        esercizi.forEach(e => {
+            const item = document.getElementById(`esercizio-${e.id}`);
+            if (item) item.remove();
+        });
+        esercizi = [];
+        eserciziCounter = 1;
+
+        // Aggiungi esercizi dal LaTeX
+        for (const match of itemMatches) {
+            let fullText = match[1].trim();
+
+            // Controlla se c'è la stella
+            const stellaMatch = fullText.match(/^\(\$\\star\$\)\s*/);
+            const stella = !!stellaMatch;
+
+            if (stellaMatch) {
+                fullText = fullText.substring(stellaMatch[0].length);
+            }
+
+            // Rimuovi newlines e pulisci
+            fullText = fullText.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+            if (fullText) {
+                addEsercizio();
+                const lastEsercizio = esercizi[esercizi.length - 1];
+                document.getElementById(`esercizio-text-${lastEsercizio.id}`).value = fullText;
+                document.getElementById(`stella-${lastEsercizio.id}`).checked = stella;
+                lastEsercizio.testo = fullText;
+                lastEsercizio.stella = stella;
+            }
+        }
+    }
+
+    // Estrai griglia di valutazione
+    const tabulaMatch = latex.match(/\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/);
+    if (tabulaMatch) {
+        const rows = tabulaMatch[1].split('\\\\');
+
+        // Rimuovi tutti i descrittori esistenti
+        descrittori.forEach(d => {
+            const item = document.getElementById(`descrittore-${d.id}`);
+            if (item) item.remove();
+        });
+        descrittori = [];
+        descrittoreCounter = 1;
+
+        // Aggiungi descrittori dal LaTeX
+        for (const row of rows) {
+            const cells = row.split('&').map(c => c.trim());
+            if (cells.length >= 2 && cells[0] && !cells[0].includes('hline') && !cells[0].includes('textbf')) {
+                const descrittore = cells[0].replace(/\s+/g, ' ').trim();
+                const puntiMatch = cells[1].match(/\/(\d+)/);
+                const punti = puntiMatch ? puntiMatch[1] : '';
+
+                if (descrittore && punti) {
+                    addDescrittore();
+                    const lastDescrittore = descrittori[descrittori.length - 1];
+                    document.getElementById(`desc-${lastDescrittore.id}`).value = descrittore;
+                    document.getElementById(`punti-${lastDescrittore.id}`).value = punti;
+                    lastDescrittore.descrittore = descrittore;
+                    lastDescrittore.punti = punti;
+                }
+            }
+        }
+    }
+
+    // Estrai voto minimo da \totpunti[] se presente
+    const totpuntiMatch = latex.match(/\\totpunti\[\/\d+\*\(10-([0-9.]+)\)\/[0-9.]+\+1\]/);
+    if (totpuntiMatch) {
+        const votoMin = totpuntiMatch[1];
+        document.getElementById('votoMinimo').value = votoMin;
+    } else {
+        // Se usa la formula semplice, resetta voto minimo
+        document.getElementById('votoMinimo').value = '';
+    }
 }
 
 // === TEMPLATE MANAGEMENT ===

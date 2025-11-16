@@ -5,9 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LaTeX WYSIWYG Editor</title>
     <link rel="stylesheet" href="style.css">
-    <!-- LaTeX.js for full LaTeX compilation -->
-    <script src="https://cdn.jsdelivr.net/npm/latex.js/dist/latex.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/latex.js/dist/css/base.min.css">
+    <!-- MathJax for mathematical formulas -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                packages: {'[+]': ['ams']}
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
 </head>
 <body>
     <div class="container">
@@ -168,6 +180,15 @@
                         <!-- Descrittori verranno aggiunti dinamicamente -->
                     </div>
                     <button id="addDescrittoreBtn" class="btn btn-small">➕ Aggiungi Descrittore</button>
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label for="votoMinimo">Voto Minimo (opzionale):</label>
+                        <input type="number" id="votoMinimo" placeholder="es. 1, 2, 3..." min="0" max="10" step="0.5">
+                        <small style="display: block; margin-top: 5px; color: #666;">
+                            Se specificato, usa formula: [/totalePunti*(10-votoMin)/votoMin+1]<br>
+                            Altrimenti usa: [/totalePunti*10]
+                        </small>
+                    </div>
                 </div>
             </div>
 
@@ -181,7 +202,13 @@
                 <div id="latexTab" class="tab-content active">
                     <div class="code-actions">
                         <button id="copyCodeBtn" class="btn btn-small">📋 Copia Codice</button>
+                        <button id="importLatexBtn" class="btn btn-small btn-warning">⬅️ Importa nei Campi</button>
+                        <label class="toggle-edit">
+                            <input type="checkbox" id="editableToggle">
+                            <span>✏️ Modifica</span>
+                        </label>
                     </div>
+                    <textarea id="latexEditor" class="latex-code latex-editor" style="display: none;" rows="30" spellcheck="false"></textarea>
                     <pre id="latexPreview" class="latex-code"><code>Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...</code></pre>
                 </div>
 
