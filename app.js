@@ -384,16 +384,11 @@ function generateLatex() {
     let totpuntiFormula = '';
 
     if (totalePunti > 0) {
-        if (votoMin > 0) {
-            // Formula corretta: [/totalePunti*(votoMax-votoMin)+votoMin]
-            totpuntiFormula = `[/${totalePunti}*(${votoMax}-${votoMin})+${votoMin}]`;
-        } else {
-            // Formula semplice: [/totalePunti*votoMax]
-            totpuntiFormula = `[/${totalePunti}*${votoMax}]`;
-        }
+        // Formula: [/totalePunti*(votoMax-votoMin)+votoMin]
+        totpuntiFormula = `[/${totalePunti}*(${votoMax}-${votoMin})+${votoMin}]`;
     } else {
         // Default se non ci sono descrittori
-        totpuntiFormula = '[/1*10]';
+        totpuntiFormula = `[/1*(${votoMax}-${votoMin})+${votoMin}]`;
     }
 
     // Sostituisci i placeholder nel template
