@@ -349,98 +349,67 @@ function generateLatex() {
 function generateVisualPreview(tempo, docente, consegna) {
     const visualPreview = document.getElementById('visualPreview');
 
-    // Converti LaTeX in formato visualizzabile (mantieni formule matematiche)
-    function processLatexText(text) {
-        // Non escape HTML per permettere rendering formule matematiche
-        // Converti alcuni comandi LaTeX comuni in formato leggibile
-        return text
-            .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
-            .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
-            .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
-            .replace(/\\section\{([^}]+)\}/g, '<h2>$1</h2>')
-            .replace(/\\subsection\{([^}]+)\}/g, '<h3>$1</h3>')
-            .replace(/\\begin\{itemize\}/g, '<ul>')
-            .replace(/\\end\{itemize\}/g, '</ul>')
-            .replace(/\\begin\{enumerate\}/g, '<ol>')
-            .replace(/\\end\{enumerate\}/g, '</ol>')
-            .replace(/\\item\s*/g, '<li>')
-            .replace(/\\\\/g, '<br>')
-            .replace(/~/g, '&nbsp;');
+    // Ottieni il codice LaTeX completo generato
+    const latexCode = document.getElementById('latexPreview').textContent;
+
+    if (!latexCode || latexCode === 'Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...') {
+        visualPreview.innerHTML = '<p class="preview-placeholder">Genera prima il codice LaTeX per vedere l\'anteprima compilata</p>';
+        return;
     }
 
-    let eserciziHTML = '';
-    esercizi.forEach((e, index) => {
-        if (e.testo) {
-            const stellaSymbol = e.stella ? '⭐ ' : '';
-            eserciziHTML += `<div class="exercise-item"><strong>${index + 1}.</strong> ${stellaSymbol}${processLatexText(e.testo)}</div>`;
-        }
-    });
+    try {
+        // Usa LaTeX.js per compilare il documento LaTeX completo
+        if (typeof latexjs !== 'undefined') {
+            visualPreview.innerHTML = '<div class="latex-compiling">⏳ Compilazione LaTeX in corso...</div>';
 
-    let descrittoriHTML = '';
-    let totPunti = 0;
-    descrittori.forEach(d => {
-        if (d.descrittore && d.punti) {
-            totPunti += parseInt(d.punti) || 0;
-            descrittoriHTML += `
-                <tr>
-                    <td>${processLatexText(d.descrittore)}</td>
-                    <td class="points-cell">____/${d.punti}</td>
-                </tr>
+            // Compila il documento LaTeX in modo asincrono
+            setTimeout(() => {
+                try {
+                    const generator = latexjs.parse(latexCode, { generator: latexjs.HtmlGenerator });
+                    const compiledDocument = generator.domFragment();
+
+                    // Pulisci e mostra il risultato
+                    visualPreview.innerHTML = '';
+                    visualPreview.appendChild(compiledDocument);
+
+                    // Aggiungi una classe per lo styling
+                    visualPreview.classList.add('latex-compiled');
+                } catch (innerError) {
+                    showCompilationError(innerError);
+                }
+            }, 100);
+        } else {
+            // Fallback se LaTeX.js non è caricato
+            visualPreview.innerHTML = `
+                <div class="latex-error">
+                    <h3>⚠️ LaTeX.js non disponibile</h3>
+                    <p>La libreria di compilazione LaTeX non è ancora caricata. Ricarica la pagina.</p>
+                    <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                        In alternativa, scarica il file .tex e compilalo con un compilatore LaTeX tradizionale.
+                    </p>
+                </div>
             `;
         }
-    });
+    } catch (error) {
+        showCompilationError(error);
+    }
 
-    visualPreview.innerHTML = `
-        <div class="latex-preview-document">
-            <div class="latex-header">
-                <h1 class="latex-title">Verifica</h1>
-                <div class="latex-metadata">
-                    <div class="meta-row"><strong>Tempo:</strong> ${processLatexText(tempo)}</div>
-                    <div class="meta-row"><strong>Docente:</strong> ${processLatexText(docente)}</div>
-                    <div class="meta-row"><strong>Nome e Cognome:</strong> _____________________________</div>
-                </div>
+    function showCompilationError(error) {
+        // Mostra errore di compilazione
+        visualPreview.innerHTML = `
+            <div class="latex-error">
+                <h3>❌ Errore di Compilazione LaTeX</h3>
+                <p><strong>Messaggio:</strong> ${escapeHtml(error.message)}</p>
+                <details style="margin-top: 15px;">
+                    <summary style="cursor: pointer; font-weight: bold;">Dettagli errore</summary>
+                    <pre style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px; font-size: 11px; overflow-x: auto;">${escapeHtml(error.stack || error.toString())}</pre>
+                </details>
+                <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                    💡 Suggerimento: Verifica la sintassi LaTeX nel tab "Codice LaTeX" o scarica il file .tex per compilarlo esternamente.
+                </p>
             </div>
-
-            <div class="latex-section">
-                <h2 class="latex-section-title">Consegna</h2>
-                <div class="latex-content">${processLatexText(consegna)}</div>
-            </div>
-
-            ${esercizi.length > 0 ? `
-            <div class="latex-section">
-                <h2 class="latex-section-title">Esercizi</h2>
-                <div class="latex-exercises">
-                    ${eserciziHTML}
-                </div>
-            </div>
-            ` : ''}
-
-            ${descrittori.length > 0 ? `
-            <div class="latex-section">
-                <h2 class="latex-section-title">Griglia di Valutazione</h2>
-                <table class="latex-table">
-                    <thead>
-                        <tr>
-                            <th>Descrittore</th>
-                            <th style="width: 120px;">Punti</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${descrittoriHTML}
-                        <tr class="total-row">
-                            <td><strong>TOTALE</strong></td>
-                            <td class="points-cell"><strong>____/${totPunti}</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            ` : ''}
-        </div>
-    `;
-
-    // Riprocessa MathJax per renderizzare le formule matematiche
-    if (typeof MathJax !== 'undefined') {
-        MathJax.typesetPromise([visualPreview]).catch((err) => console.log('MathJax error:', err));
+        `;
+        console.error('LaTeX compilation error:', error);
     }
 }
 
