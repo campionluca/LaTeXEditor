@@ -393,11 +393,19 @@ function generateLatex() {
     let totpuntiFormula = '';
 
     if (totalePunti > 0) {
-        // Formula semplificata con valori già calcolati: [/totalePunti*diff+votoMin]
-        totpuntiFormula = `[/${totalePunti}*${diffVoti}+${votoMin}]`;
+        // Formula semplificata con valori già calcolati
+        if (votoMin === 0) {
+            totpuntiFormula = `[/${totalePunti}*${diffVoti}]`;
+        } else {
+            totpuntiFormula = `[/${totalePunti}*${diffVoti}+${votoMin}]`;
+        }
     } else {
         // Default se non ci sono descrittori
-        totpuntiFormula = `[/1*${diffVoti}+${votoMin}]`;
+        if (votoMin === 0) {
+            totpuntiFormula = `[/1*${diffVoti}]`;
+        } else {
+            totpuntiFormula = `[/1*${diffVoti}+${votoMin}]`;
+        }
     }
 
     // Sostituisci i placeholder nel template
