@@ -1172,6 +1172,7 @@ function convertToCompilableLatex(latexCode) {
 \\usepackage{amsmath}
 \\usepackage{amssymb}
 \\usepackage{graphicx}
+\\usepackage{float}
 \\usepackage{fancyhdr}
 \\usepackage{tabularx}
 
