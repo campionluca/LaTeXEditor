@@ -391,28 +391,29 @@ header h1 {
 }
 
 .form-section {
-    margin-bottom: 30px;
-    padding: 20px;
+    margin-bottom: 15px;
+    padding: 12px;
     background: #f8f9fa;
-    border-radius: 10px;
+    border-radius: 8px;
     border-left: 4px solid #667eea;
 }
 
 .form-section h3 {
     color: #667eea;
-    margin-bottom: 20px;
-    font-size: 1.3em;
+    margin-bottom: 10px;
+    font-size: 1.2em;
 }
 
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     color: #495057;
     font-weight: 600;
+    font-size: 0.95em;
 }
 
 .form-group input,
@@ -435,16 +436,17 @@ header h1 {
 
 .descrittore-item {
     background: white;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border-left: 3px solid #28a745;
 }
 
 .descrittore-item h4 {
     color: #28a745;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
+    font-size: 1em;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -942,16 +944,17 @@ header h1 {
 /* Esercizio Item */
 .esercizio-item {
     background: white;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border-left: 3px solid #17a2b8;
 }
 
 .esercizio-item h4 {
     color: #17a2b8;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
+    font-size: 1em;
     display: flex;
     justify-content: space-between;
     align-items: center;

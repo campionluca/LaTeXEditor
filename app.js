@@ -41,8 +41,7 @@ let currentTemplate = `\\documentclass{verifica}
 
 \\begin{document}
 
-
-\\intestazionesemplice
+{{INTESTAZIONE}}
 
 \\begin{esercizi}
     \\item {{CONSEGNA}}
@@ -332,6 +331,15 @@ function generateLatex() {
     const tempo = document.getElementById('tempo').value || '100 minuti';
     const docente = document.getElementById('docente').value || 'Proff. Luca Campion, Riccardo Rossi';
     const consegna = document.getElementById('consegna').value || 'Inserisci la consegna';
+    const tipoIntestazione = document.getElementById('tipoIntestazione')?.value || 'semplice';
+
+    // Mappa tipo intestazione al comando LaTeX
+    const intestazioneMap = {
+        'semplice': '\\intestazionesemplice',
+        'default': '\\intestazionedefault',
+        'righe': '\\intestazionerighe'
+    };
+    const intestazioneCmd = intestazioneMap[tipoIntestazione] || '\\intestazionesemplice';
 
     // Aggiorna i dati degli esercizi
     esercizi.forEach(e => {
@@ -379,22 +387,24 @@ function generateLatex() {
     });
 
     // Calcola la formula per \totpunti[] con voto max e min configurabili
-    const votoMin = parseFloat(document.getElementById('votoMinimo')?.value) || 0;
-    const votoMax = parseFloat(document.getElementById('votoMassimo')?.value) || 10;
+    const votoMin = Math.round(parseFloat(document.getElementById('votoMinimo')?.value) || 0);
+    const votoMax = Math.round(parseFloat(document.getElementById('votoMassimo')?.value) || 10);
+    const diffVoti = votoMax - votoMin; // Calcola la differenza
     let totpuntiFormula = '';
 
     if (totalePunti > 0) {
-        // Formula: [/totalePunti*(votoMax-votoMin)+votoMin]
-        totpuntiFormula = `[/${totalePunti}*(${votoMax}-${votoMin})+${votoMin}]`;
+        // Formula semplificata con valori già calcolati: [/totalePunti*diff+votoMin]
+        totpuntiFormula = `[/${totalePunti}*${diffVoti}+${votoMin}]`;
     } else {
         // Default se non ci sono descrittori
-        totpuntiFormula = `[/1*(${votoMax}-${votoMin})+${votoMin}]`;
+        totpuntiFormula = `[/1*${diffVoti}+${votoMin}]`;
     }
 
     // Sostituisci i placeholder nel template
     let latex = currentTemplate
         .replace('{{TEMPO}}', tempo)
         .replace('{{DOCENTE}}', docente)
+        .replace('{{INTESTAZIONE}}', intestazioneCmd)
         .replace('{{CONSEGNA}}', consegna)
         .replace('{{ESERCIZI}}', eserciziText)
         .replace('{{DESCRITTORI_ROWS}}', descrittoriRows)
