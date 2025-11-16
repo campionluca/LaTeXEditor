@@ -594,6 +594,109 @@ header h1 {
     padding: 100px 20px;
 }
 
+/* LaTeX Preview Styles - Simula documento compilato */
+.latex-preview-document {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 60px;
+    background: white;
+    font-family: 'Computer Modern', 'Times New Roman', serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+}
+
+.latex-header {
+    margin-bottom: 30px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 20px;
+}
+
+.latex-title {
+    text-align: center;
+    font-size: 24pt;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+}
+
+.latex-metadata {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 11pt;
+}
+
+.meta-row {
+    display: flex;
+    gap: 10px;
+}
+
+.latex-section {
+    margin-top: 25px;
+    margin-bottom: 25px;
+}
+
+.latex-section-title {
+    font-size: 14pt;
+    font-weight: bold;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #666;
+    padding-bottom: 5px;
+}
+
+.latex-content {
+    text-align: justify;
+    margin-bottom: 15px;
+    text-indent: 0;
+}
+
+.latex-exercises {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.latex-exercises .exercise-item {
+    padding: 10px;
+    background: #f9f9f9;
+    border-left: 3px solid #667eea;
+    text-align: justify;
+}
+
+.latex-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 11pt;
+}
+
+.latex-table th,
+.latex-table td {
+    border: 1px solid #333;
+    padding: 10px;
+    text-align: left;
+}
+
+.latex-table th {
+    background: #f0f0f0;
+    font-weight: bold;
+}
+
+.points-cell {
+    text-align: center;
+    font-family: 'Courier New', monospace;
+}
+
+.total-row {
+    background: #f5f5f5;
+    font-weight: bold;
+}
+
+.total-row td {
+    border-top: 2px solid #000;
+}
+
 /* Esercizio Item */
 .esercizio-item {
     background: white;
@@ -687,6 +790,42 @@ body.dark-theme .visual-preview table td {
     border-color: #495057;
 }
 
+/* Dark theme for LaTeX preview */
+body.dark-theme .latex-preview-document {
+    background: #1a1a2e;
+    color: #e9ecef;
+}
+
+body.dark-theme .latex-header {
+    border-bottom-color: #e9ecef;
+}
+
+body.dark-theme .latex-section-title {
+    border-bottom-color: #adb5bd;
+}
+
+body.dark-theme .latex-exercises .exercise-item {
+    background: #16213e;
+    border-left-color: #667eea;
+}
+
+body.dark-theme .latex-table th,
+body.dark-theme .latex-table td {
+    border-color: #495057;
+}
+
+body.dark-theme .latex-table th {
+    background: #16213e;
+}
+
+body.dark-theme .total-row {
+    background: #16213e;
+}
+
+body.dark-theme .total-row td {
+    border-top-color: #e9ecef;
+}
+
 body.dark-theme .tab-btn {
     color: #adb5bd;
 }
@@ -745,23 +884,15 @@ body.dark-theme .warning-section {
     height: 100vh;
     background: white;
     box-shadow: -5px 0 20px rgba(0,0,0,0.3);
-    transition: right 0.3s ease, left 0.3s ease;
+    transition: right 0.3s ease;
     z-index: 1100;
-    display: flex;
+    display: none;
     flex-direction: column;
 }
 
 .side-panel.show {
     right: 0;
-}
-
-.side-panel[style*="left"] {
-    left: -400px;
-    right: auto;
-}
-
-.side-panel[style*="left"].show {
-    left: 0;
+    display: flex;
 }
 
 .panel-header {
