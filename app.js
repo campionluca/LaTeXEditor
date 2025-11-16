@@ -354,7 +354,9 @@ function generateLatex() {
     esercizi.forEach(e => {
         if (e.testo) {
             const prefix = e.stella ? '($\\\\star$) ' : '';
-            eserciziText += `    ${prefix}${e.testo}\\n`;
+            // Converti newline JavaScript in newline LaTeX
+            const testoLatex = e.testo.replace(/\n/g, '\\\\ ');
+            eserciziText += `    ${prefix}${testoLatex}\\n`;
         }
     });
 
@@ -394,14 +396,14 @@ function generateLatex() {
 
     if (totalePunti > 0) {
         // Formula semplificata con valori già calcolati
-        if (votoMin === 0) {
+        if (votoMin <= 0) {
             totpuntiFormula = `[/${totalePunti}*${diffVoti}]`;
         } else {
             totpuntiFormula = `[/${totalePunti}*${diffVoti}+${votoMin}]`;
         }
     } else {
         // Default se non ci sono descrittori
-        if (votoMin === 0) {
+        if (votoMin <= 0) {
             totpuntiFormula = `[/1*${diffVoti}]`;
         } else {
             totpuntiFormula = `[/1*${diffVoti}+${votoMin}]`;
