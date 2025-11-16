@@ -235,9 +235,16 @@
                         <small>Questo potrebbe richiedere alcuni secondi</small>
                     </div>
                     <div id="pdfError" class="pdf-error" style="display: none;">
-                        <h3>❌ Errore nella compilazione PDF</h3>
+                        <h3>❌ Compilazione pdflatex non disponibile</h3>
                         <p id="pdfErrorMessage"></p>
-                        <button class="btn btn-primary" onclick="retryPdfCompilation()">🔄 Riprova</button>
+                        <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; justify-content: center;">
+                            <button class="btn btn-primary" onclick="retryPdfCompilation()">🔄 Riprova pdflatex</button>
+                            <button class="btn btn-warning" onclick="generatePDFFromPreview()">📄 Genera da Anteprima</button>
+                            <button class="btn btn-success" onclick="downloadLatex()">💾 Scarica .tex</button>
+                        </div>
+                        <small style="display: block; margin-top: 15px; color: #666; text-align: center;">
+                            Nota: "Genera da Anteprima" crea un PDF dall'HTML, non da pdflatex
+                        </small>
                     </div>
                     <iframe id="pdfViewer" class="pdf-viewer" style="display: none;"></iframe>
                     <div id="pdfPlaceholder" class="pdf-placeholder">
