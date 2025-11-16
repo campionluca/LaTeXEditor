@@ -102,11 +102,11 @@ function initializeApp() {
     // Imposta l'editor LaTeX sempre in modalità modifica di default
     const editableToggle = document.getElementById('editableToggle');
     const preview = document.getElementById('latexPreview');
-    const editor = document.getElementById('latexEditor');
+    const editorWrapper = document.getElementById('editorWrapper');
 
     editableToggle.checked = true;
     preview.style.display = 'none';
-    editor.style.display = 'block';
+    editorWrapper.style.display = 'flex';
 }
 
 function setupEventListeners() {
@@ -177,6 +177,11 @@ function setupEventListeners() {
     // Editor LaTeX edit/import
     document.getElementById('editableToggle').addEventListener('change', toggleLatexEdit);
     document.getElementById('importLatexBtn').addEventListener('click', importLatexToForm);
+
+    // Numeri di riga editor LaTeX
+    const latexEditor = document.getElementById('latexEditor');
+    latexEditor.addEventListener('input', updateLineNumbers);
+    latexEditor.addEventListener('scroll', syncScroll);
 
     // Chiudi dropdown quando si clicca fuori
     document.addEventListener('click', () => {
@@ -412,6 +417,9 @@ function generateLatex() {
     preview.innerHTML = `<code>${escapeHtml(latex)}</code>`;
     editor.value = latex;
 
+    // Aggiorna i numeri di riga
+    updateLineNumbers();
+
     // Compila il PDF e mostralo
     compilePDF(latex);
 
@@ -461,21 +469,53 @@ function copyCode() {
 function toggleLatexEdit() {
     const checkbox = document.getElementById('editableToggle');
     const preview = document.getElementById('latexPreview');
+    const editorWrapper = document.getElementById('editorWrapper');
     const editor = document.getElementById('latexEditor');
 
     if (checkbox.checked) {
         // Mostra editor
         preview.style.display = 'none';
-        editor.style.display = 'block';
+        editorWrapper.style.display = 'flex';
         // Copia il contenuto del preview nell'editor
         editor.value = preview.textContent;
+        // Aggiorna i numeri di riga
+        updateLineNumbers();
     } else {
         // Mostra preview
-        editor.style.display = 'none';
+        editorWrapper.style.display = 'none';
         preview.style.display = 'block';
         // Aggiorna il preview con il contenuto modificato
         preview.innerHTML = `<code>${escapeHtml(editor.value)}</code>`;
     }
+}
+
+// Aggiorna i numeri di riga dell'editor LaTeX
+function updateLineNumbers() {
+    const editor = document.getElementById('latexEditor');
+    const lineNumbers = document.getElementById('lineNumbers');
+
+    if (!editor || !lineNumbers) return;
+
+    const lines = editor.value.split('\n');
+    const lineCount = lines.length;
+
+    // Genera i numeri di riga
+    let lineNumbersHTML = '';
+    for (let i = 1; i <= lineCount; i++) {
+        lineNumbersHTML += i + '\n';
+    }
+
+    lineNumbers.textContent = lineNumbersHTML;
+}
+
+// Sincronizza lo scroll tra editor e numeri di riga
+function syncScroll() {
+    const editor = document.getElementById('latexEditor');
+    const lineNumbers = document.getElementById('lineNumbers');
+
+    if (!editor || !lineNumbers) return;
+
+    lineNumbers.scrollTop = editor.scrollTop;
 }
 
 function importLatexToForm() {
