@@ -1274,20 +1274,48 @@ async function compilePDF(latexCode) {
         // Converti il documento per essere compilabile con pdflatex
         const compilableLatex = convertToCompilableLatex(latexCode);
 
-        // Compila con LaTeX.Online usando pdflatex
-        const response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(compilableLatex), {
-            method: 'GET',
+        // Usa POST invece di GET per evitare URL troppo lunghi
+        const formData = new FormData();
+        formData.append('file', new Blob([compilableLatex], { type: 'text/plain' }), 'document.tex');
+
+        const response = await fetch('https://latexonline.cc/compile', {
+            method: 'POST',
+            body: formData,
         });
 
         if (!response.ok) {
-            throw new Error(`Errore HTTP ${response.status}: impossibile compilare il documento`);
+            // Prova con un servizio alternativo se il primo fallisce
+            const altResponse = await fetch('https://texlive.net/cgi-bin/latexcgi', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'filecontents=' + encodeURIComponent(compilableLatex) + '&filename=document.tex&engine=pdflatex'
+            });
+
+            if (!altResponse.ok) {
+                throw new Error(`Impossibile compilare il documento. Servizio temporaneamente non disponibile.`);
+            }
+
+            const pdfBlob = await altResponse.blob();
+            if (pdfBlob.size < 1000) {
+                throw new Error(`Output non valido dal servizio di compilazione`);
+            }
+
+            currentPdfBlob = pdfBlob;
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            pdfViewer.src = pdfUrl;
+            pdfLoading.style.display = 'none';
+            pdfViewer.style.display = 'block';
+            showToast('PDF compilato con successo tramite pdflatex!', 'success');
+            return;
         }
 
         const pdfBlob = await response.blob();
 
         // Verifica che sia un PDF valido
         if (pdfBlob.size < 1000) {
-            throw new Error(`Compilazione fallita: output troppo piccolo`);
+            throw new Error(`Compilazione fallita: output non valido`);
         }
 
         currentPdfBlob = pdfBlob;
@@ -1310,7 +1338,8 @@ async function compilePDF(latexCode) {
 
         const errorMsg = document.getElementById('pdfErrorMessage');
         errorMsg.textContent = `Si è verificato un errore durante la compilazione PDF: ${error.message}. ` +
-                               `Verifica il codice LaTeX o scarica il file .tex per compilarlo localmente.`;
+                               `Il servizio online potrebbe essere temporaneamente non disponibile. ` +
+                               `Scarica il file .tex e compilalo localmente con pdflatex.`;
 
         showToast('Errore nella compilazione PDF', 'error');
     }
