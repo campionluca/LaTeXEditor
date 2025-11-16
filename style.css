@@ -697,6 +697,84 @@ header h1 {
     border-top: 2px solid #000;
 }
 
+/* LaTeX Compilation States */
+.latex-compiling {
+    text-align: center;
+    padding: 60px 20px;
+    font-size: 18px;
+    color: #667eea;
+    font-weight: 500;
+}
+
+.latex-error {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 10px;
+    padding: 30px;
+    margin: 20px;
+}
+
+.latex-error h3 {
+    color: #856404;
+    margin-bottom: 15px;
+}
+
+.latex-error p {
+    color: #856404;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.latex-error details {
+    margin-top: 15px;
+}
+
+.latex-error summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: #856404;
+    padding: 10px;
+    background: #fff;
+    border-radius: 5px;
+}
+
+.latex-error summary:hover {
+    background: #f8f9fa;
+}
+
+/* LaTeX.js compiled document styling */
+.latex-compiled {
+    background: white;
+    padding: 40px;
+}
+
+.latex-compiled .body {
+    font-family: 'Computer Modern', 'Latin Modern', 'Times New Roman', serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Override LaTeX.js default styles for better appearance */
+.latex-compiled h1 {
+    text-align: center;
+    font-size: 20pt;
+    margin-bottom: 20px;
+}
+
+.latex-compiled table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.latex-compiled table td,
+.latex-compiled table th {
+    border: 1px solid #333;
+    padding: 8px;
+}
+
 /* Esercizio Item */
 .esercizio-item {
     background: white;
@@ -824,6 +902,40 @@ body.dark-theme .total-row {
 
 body.dark-theme .total-row td {
     border-top-color: #e9ecef;
+}
+
+/* Dark theme for LaTeX compilation states */
+body.dark-theme .latex-compiling {
+    color: #9fa8da;
+}
+
+body.dark-theme .latex-error {
+    background: #2d2d2d;
+    border-color: #ffc107;
+}
+
+body.dark-theme .latex-error h3,
+body.dark-theme .latex-error p {
+    color: #ffc107;
+}
+
+body.dark-theme .latex-error summary {
+    background: #1a1a2e;
+    color: #ffc107;
+}
+
+body.dark-theme .latex-error summary:hover {
+    background: #16213e;
+}
+
+body.dark-theme .latex-compiled {
+    background: #1a1a2e;
+    color: #e9ecef;
+}
+
+body.dark-theme .latex-compiled table td,
+body.dark-theme .latex-compiled table th {
+    border-color: #495057;
 }
 
 body.dark-theme .tab-btn {
