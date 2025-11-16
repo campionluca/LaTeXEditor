@@ -85,7 +85,7 @@
   \newcommand{\tipologia}[1]{\def\@tipologia{#1}}
 \def\@disciplina{matematica}
   \newcommand{\disciplina}[1]{\def\@disciplina{#1}}
-\def\@istituto{I.S. Antonio Scarpa}
+\def\@istituto{I.S.  ``Antonio Scarpa'' -- Motta di Livenza (TV)}
   \newcommand{\istituto}[1]{\def\@istituto{#1}}
 \def\@data{\today}
   \newcommand{\data}[1]{\def\@data{#1}}
