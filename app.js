@@ -452,7 +452,7 @@ ${descrittoriRows}
     // Formatta la consegna generale
     let consegnaLatex = '';
     if (consegna && consegna.trim() !== '') {
-        consegnaLatex = `\\noindent\\textbf{Consegna:} ${consegna}\n\n\\vspace{0.3cm}\n`;
+        consegnaLatex = `\\noindent ${consegna}\n\n\\vspace{0.3cm}\n`;
     }
 
     // Sostituisci i placeholder nel template
