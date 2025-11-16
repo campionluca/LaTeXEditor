@@ -1271,16 +1271,38 @@ async function compilePDF(latexCode) {
     try {
         showToast('Compilazione PDF in corso...', 'info', 2000);
 
-        // Usa LaTeX.Online API per compilare il PDF
-        const response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(latexCode), {
+        // Prima prova con la classe verifica
+        let response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(latexCode), {
             method: 'GET',
         });
 
+        // Se fallisce con verifica class, prova con article class
         if (!response.ok) {
-            throw new Error(`Errore HTTP: ${response.status}`);
+            showToast('Tentativo con classe standard article...', 'info', 2000);
+
+            // Sostituisci verifica con article
+            const articleLatex = latexCode
+                .replace(/\\documentclass\{verifica\}/g, '\\documentclass{article}')
+                .replace(/\\intestazionesemplice/g, '')
+                .replace(/\\lineanome/g, '')
+                .replace(/\\totpunti\[.*?\]/g, 'Voto: _____ / 10');
+
+            response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(articleLatex), {
+                method: 'GET',
+            });
+        }
+
+        if (!response.ok) {
+            throw new Error(`Compilazione fallita. La classe LaTeX "verifica" non è supportata dal servizio online.`);
         }
 
         const pdfBlob = await response.blob();
+
+        // Verifica che sia un PDF valido
+        if (pdfBlob.type !== 'application/pdf' && pdfBlob.size < 1000) {
+            throw new Error(`Il servizio online non supporta questa struttura LaTeX.`);
+        }
+
         currentPdfBlob = pdfBlob;
 
         // Crea URL per il PDF e mostralo nell'iframe
@@ -1296,16 +1318,130 @@ async function compilePDF(latexCode) {
     } catch (error) {
         console.error('Errore compilazione PDF:', error);
 
-        pdfLoading.style.display = 'none';
-        pdfError.style.display = 'flex';
-
-        const errorMsg = document.getElementById('pdfErrorMessage');
-        errorMsg.textContent = `Si è verificato un errore durante la compilazione del PDF: ${error.message}. ` +
-                               `Questo potrebbe essere dovuto alla classe LaTeX "verifica" non supportata dal servizio online. ` +
-                               `Puoi comunque scaricare il file .tex e compilarlo localmente.`;
-
-        showToast('Errore nella compilazione PDF', 'error');
+        // Fallback: usa la preview visuale come PDF stampabile
+        showPrintablePDFPreview();
     }
+}
+
+function showPrintablePDFPreview() {
+    const pdfLoading = document.getElementById('pdfLoading');
+    const pdfError = document.getElementById('pdfError');
+    const pdfViewer = document.getElementById('pdfViewer');
+
+    pdfLoading.style.display = 'none';
+    pdfError.style.display = 'none';
+
+    // Crea un iframe con la preview visuale stampabile
+    const visualPreview = document.getElementById('visualPreview').innerHTML;
+
+    const printableHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Verifica - Preview PDF</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Times New Roman', serif;
+            padding: 40px;
+            background: white;
+            color: #000;
+            line-height: 1.6;
+        }
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+        }
+        .pdf-document { max-width: 800px; margin: 0 auto; }
+        .pdf-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }
+        .pdf-title { font-size: 28px; font-weight: bold; margin-bottom: 15px; }
+        .pdf-meta { margin-top: 15px; }
+        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .meta-grid div { padding: 8px; }
+        .student-info { border-top: 1px solid #ddd; padding-top: 10px; }
+        .pdf-section { margin: 30px 0; }
+        .pdf-item { margin: 15px 0 15px 20px; position: relative; }
+        .item-number { font-weight: bold; margin-right: 8px; }
+        .stella-icon { color: #ffa500; margin-right: 5px; }
+        .item-text { display: inline; }
+        .griglia-section { margin-top: 40px; }
+        .section-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; text-align: center; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 12px; text-align: left; }
+        .pdf-table th { background: #f5f5f5; font-weight: bold; }
+        .punti-cell { text-align: center; }
+        .total-row { background: #f9f9f9; font-weight: bold; }
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .print-button:hover { background: #5568d3; }
+        .download-tex-button {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .download-tex-button:hover { background: #218838; }
+    </style>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+                displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']]
+            },
+            startup: {
+                ready: () => {
+                    MathJax.startup.defaultReady();
+                    MathJax.startup.promise.then(() => {
+                        console.log('MathJax ready');
+                    });
+                }
+            }
+        };
+    </script>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Stampa / Salva come PDF</button>
+    <button class="download-tex-button no-print" onclick="parent.downloadLatex()">💾 Scarica .tex</button>
+    ${visualPreview}
+</body>
+</html>
+    `;
+
+    // Crea blob e URL
+    const blob = new Blob([printableHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+
+    pdfViewer.src = url;
+    pdfViewer.style.display = 'block';
+
+    showToast('Anteprima pronta! Usa il pulsante "Stampa/Salva come PDF" nell\'anteprima', 'success', 6000);
 }
 
 function retryPdfCompilation() {
