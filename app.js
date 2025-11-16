@@ -412,209 +412,11 @@ function generateLatex() {
     preview.innerHTML = `<code>${escapeHtml(latex)}</code>`;
     editor.value = latex;
 
-    // Genera anche la preview visuale
-    generateVisualPreview(tempo, docente, consegna);
-
     // Compila il PDF e mostralo
     compilePDF(latex);
 
     // Passa automaticamente al tab PDF
     switchTab('pdf');
-}
-
-function generateVisualPreview(tempo, docente, consegna) {
-    const visualPreview = document.getElementById('visualPreview');
-
-    // Ottieni il codice LaTeX completo generato
-    const latexCode = document.getElementById('latexPreview').textContent;
-
-    if (!latexCode || latexCode === 'Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...') {
-        visualPreview.innerHTML = '<p class="preview-placeholder">Genera prima il codice LaTeX per vedere l\'anteprima compilata</p>';
-        return;
-    }
-
-    // Parser LaTeX custom per simulare PDF compilato
-    function parseLatexDocument(latex) {
-        const doc = {
-            tempo: '',
-            docente: '',
-            nome: '',
-            cognome: '',
-            items: [],
-            griglia: []
-        };
-
-        // Estrai tempo e docente
-        const tempoMatch = latex.match(/\\tempo\{([^}]+)\}/);
-        const docenteMatch = latex.match(/\\docente\{([^}]+)\}/);
-        const nomeMatch = latex.match(/\\nome\{([^}]+)\}/);
-        const cognomeMatch = latex.match(/\\cognome\{([^}]+)\}/);
-
-        doc.tempo = tempoMatch ? tempoMatch[1] : '';
-        doc.docente = docenteMatch ? docenteMatch[1] : '';
-        doc.nome = nomeMatch ? nomeMatch[1] : '';
-        doc.cognome = cognomeMatch ? cognomeMatch[1] : '';
-
-        // Estrai items dall'ambiente esercizi o enumerate
-        const eserciziMatch = latex.match(/\\begin\{esercizi\}([\s\S]*?)\\end\{esercizi\}/);
-        const enumerateMatch = latex.match(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/);
-        const exerciseEnv = eserciziMatch || enumerateMatch;
-
-        if (exerciseEnv) {
-            const itemsText = exerciseEnv[1];
-            // Match items, gestendo sia \item testo che \item ($\star$) testo
-            const itemMatches = itemsText.matchAll(/\\item\s+([\s\S]*?)(?=\\item|$)/g);
-
-            for (const match of itemMatches) {
-                let fullText = match[1].trim();
-
-                // Controlla se c'è la stella all'inizio
-                const stellaMatch = fullText.match(/^\(\$\\star\$\)\s*/);
-                const stella = !!stellaMatch;
-
-                if (stellaMatch) {
-                    fullText = fullText.substring(stellaMatch[0].length);
-                }
-
-                // Rimuovi newlines multipli e pulisci
-                fullText = fullText.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
-
-                if (fullText) {
-                    doc.items.push({ stella, text: fullText });
-                }
-            }
-        }
-
-        // Estrai griglia di valutazione
-        const tabulaMatch = latex.match(/\\begin\{tabular\}\{[^}]+\}([\s\S]*?)\\end\{tabular\}/);
-        if (tabulaMatch) {
-            const rows = tabulaMatch[1].split('\\\\').slice(1); // Salta header
-            for (const row of rows) {
-                const cells = row.split('&').map(c => c.trim());
-                if (cells.length >= 2 && cells[0] && !cells[0].includes('hline')) {
-                    const descrittore = cells[0].replace(/\s+/g, ' ').trim();
-                    const punti = cells[1].replace(/[^0-9]/g, '').trim();
-                    if (descrittore && punti) {
-                        doc.griglia.push({ descrittore, punti });
-                    }
-                }
-            }
-        }
-
-        return doc;
-    }
-
-    // Converti testo LaTeX in HTML (mantiene formule matematiche)
-    function convertLatexToHtml(text) {
-        return text
-            .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
-            .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
-            .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
-            .replace(/\\emph\{([^}]+)\}/g, '<em>$1</em>')
-            .replace(/``/g, '"')
-            .replace(/''/g, '"')
-            .replace(/---/g, '—')
-            .replace(/--/g, '–')
-            .replace(/~/g, '&nbsp;')
-            .replace(/\\\\/g, '<br>');
-    }
-
-    try {
-        const parsedDoc = parseLatexDocument(latexCode);
-
-        // Costruisci HTML simile a PDF
-        let itemsHtml = '';
-        parsedDoc.items.forEach((item, index) => {
-            const stellaIcon = item.stella ? '<span class="stella-icon">★</span> ' : '';
-            itemsHtml += `
-                <div class="pdf-item">
-                    <span class="item-number">${index + 1}.</span>
-                    ${stellaIcon}
-                    <span class="item-text">${convertLatexToHtml(item.text)}</span>
-                </div>
-            `;
-        });
-
-        let grigliaHtml = '';
-        let totalePunti = 0;
-        parsedDoc.griglia.forEach(row => {
-            totalePunti += parseInt(row.punti) || 0;
-            grigliaHtml += `
-                <tr>
-                    <td>${convertLatexToHtml(row.descrittore)}</td>
-                    <td class="punti-cell">_____/${row.punti}</td>
-                </tr>
-            `;
-        });
-
-        visualPreview.innerHTML = `
-            <div class="pdf-document">
-                <div class="pdf-header">
-                    <h1 class="pdf-title">VERIFICA</h1>
-                    <div class="pdf-meta">
-                        <div class="meta-grid">
-                            <div><strong>Tempo a disposizione:</strong> ${convertLatexToHtml(parsedDoc.tempo)}</div>
-                            <div><strong>Insegnante:</strong> ${convertLatexToHtml(parsedDoc.docente)}</div>
-                        </div>
-                        <div class="meta-grid student-info">
-                            <div><strong>Nome:</strong> ${parsedDoc.nome || '_'.repeat(30)}</div>
-                            <div><strong>Cognome:</strong> ${parsedDoc.cognome || '_'.repeat(30)}</div>
-                        </div>
-                    </div>
-                </div>
-
-                ${parsedDoc.items.length > 0 ? `
-                <div class="pdf-section">
-                    <div class="pdf-items">
-                        ${itemsHtml}
-                    </div>
-                </div>
-                ` : ''}
-
-                ${parsedDoc.griglia.length > 0 ? `
-                <div class="pdf-section griglia-section">
-                    <h2 class="section-title">GRIGLIA DI VALUTAZIONE</h2>
-                    <table class="pdf-table">
-                        <thead>
-                            <tr>
-                                <th>DESCRITTORE</th>
-                                <th style="width: 140px;">PUNTI</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${grigliaHtml}
-                            <tr class="total-row">
-                                <td><strong>TOTALE</strong></td>
-                                <td class="punti-cell"><strong>_____/${totalePunti}</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                ` : ''}
-            </div>
-        `;
-
-        // Applica MathJax se disponibile
-        if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-            MathJax.typesetPromise([visualPreview]).catch((err) => console.log('MathJax error:', err));
-        }
-
-    } catch (error) {
-        visualPreview.innerHTML = `
-            <div class="latex-error">
-                <h3>⚠️ Errore nel rendering dell'anteprima</h3>
-                <p>Si è verificato un errore durante il parsing del documento LaTeX.</p>
-                <details style="margin-top: 15px;">
-                    <summary style="cursor: pointer; font-weight: bold;">Dettagli tecnici</summary>
-                    <pre style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px; font-size: 11px; overflow-x: auto;">${escapeHtml(error.toString())}</pre>
-                </details>
-                <p style="margin-top: 20px; font-size: 12px; color: #666;">
-                    💡 Puoi comunque scaricare il file .tex e compilarlo esternamente.
-                </p>
-            </div>
-        `;
-        console.error('Preview rendering error:', error);
-    }
 }
 
 // === DOWNLOAD & COPY ===
@@ -1256,26 +1058,8 @@ function switchTab(tabName) {
 // === PDF COMPILATION ===
 let currentPdfBlob = null;
 
-// Inizializza SwiftLaTeX engine (una sola volta)
-let swiftlatexEngine = null;
-
-async function initSwiftLaTeX() {
-    if (swiftlatexEngine) return swiftlatexEngine;
-
-    try {
-        showToast('Inizializzazione compilatore pdflatex...', 'info', 2000);
-
-        // Crea l'engine SwiftLaTeX
-        swiftlatexEngine = new PdfTeXEngine();
-        await swiftlatexEngine.loadEngine();
-
-        console.log('SwiftLaTeX engine inizializzato con successo');
-        return swiftlatexEngine;
-    } catch (error) {
-        console.error('Errore inizializzazione SwiftLaTeX:', error);
-        throw new Error('Impossibile inizializzare il compilatore pdflatex');
-    }
-}
+// URL del backend (modificabile)
+const BACKEND_URL = 'http://localhost:5000';
 
 async function compilePDF(latexCode) {
     const pdfLoading = document.getElementById('pdfLoading');
@@ -1295,42 +1079,33 @@ async function compilePDF(latexCode) {
         // Converti il documento per essere compilabile con pdflatex
         const compilableLatex = convertToCompilableLatex(latexCode);
 
-        // Inizializza SwiftLaTeX se necessario
-        const engine = await initSwiftLaTeX();
+        // Chiama il backend locale per la compilazione
+        const response = await fetch(`${BACKEND_URL}/compile`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                latex: compilableLatex
+            })
+        });
 
-        // Scrivi il file LaTeX nell'engine
-        engine.writeMemFSFile('main.tex', compilableLatex);
-
-        // Compila con pdflatex
-        showToast('Esecuzione pdflatex...', 'info', 2000);
-        const result = await engine.compileLaTeX();
-
-        if (result.status === 0) {
-            // Compilazione riuscita - leggi il PDF
-            const pdfData = engine.readMemFSFile('main.pdf');
-
-            if (!pdfData || pdfData.length === 0) {
-                throw new Error('PDF generato vuoto');
-            }
-
-            // Crea blob dal PDF
-            const pdfBlob = new Blob([pdfData], { type: 'application/pdf' });
-            currentPdfBlob = pdfBlob;
-
-            // Mostra il PDF
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            pdfViewer.src = pdfUrl;
-            pdfLoading.style.display = 'none';
-            pdfViewer.style.display = 'block';
-
-            showToast('✅ PDF compilato con successo tramite pdflatex!', 'success', 4000);
-        } else {
-            // Errore di compilazione LaTeX
-            const log = engine.readMemFSFile('main.log');
-            const logText = new TextDecoder().decode(log);
-
-            throw new Error('Errori nella compilazione LaTeX. Controlla il codice LaTeX generato.');
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Errore durante la compilazione');
         }
+
+        // Ottieni il PDF come blob
+        const pdfBlob = await response.blob();
+        currentPdfBlob = pdfBlob;
+
+        // Mostra il PDF
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        pdfViewer.src = pdfUrl;
+        pdfLoading.style.display = 'none';
+        pdfViewer.style.display = 'block';
+
+        showToast('✅ PDF compilato con successo tramite pdflatex!', 'success', 4000);
 
     } catch (error) {
         console.error('Errore compilazione PDF:', error);
@@ -1339,16 +1114,34 @@ async function compilePDF(latexCode) {
         pdfError.style.display = 'flex';
 
         const errorMsg = document.getElementById('pdfErrorMessage');
-        errorMsg.innerHTML = `
-            <strong>❌ Errore durante la compilazione pdflatex</strong><br><br>
-            ${error.message}<br><br>
-            <strong>Cosa fare:</strong><br>
-            • Controlla che tutti i campi siano compilati correttamente<br>
-            • Scarica il file .tex e controlla gli errori di compilazione<br>
-            • Riprova la compilazione
-        `;
 
-        showToast('Errore compilazione pdflatex: ' + error.message, 'error', 6000);
+        // Controlla se il backend non è raggiungibile
+        if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+            errorMsg.innerHTML = `
+                <strong>❌ Backend non raggiungibile</strong><br><br>
+                Il server backend per la compilazione pdflatex non è attivo.<br><br>
+                <strong>Per avviare il backend:</strong><br>
+                1. Apri un terminale nella cartella del progetto<br>
+                2. Installa le dipendenze: <code>pip install -r requirements.txt</code><br>
+                3. Avvia il server: <code>python backend.py</code><br>
+                4. Il backend sarà disponibile su http://localhost:5000<br><br>
+                <strong>Requisiti:</strong><br>
+                • Python 3.x installato<br>
+                • pdflatex installato (TexLive o MiKTeX)
+            `;
+        } else {
+            errorMsg.innerHTML = `
+                <strong>❌ Errore durante la compilazione pdflatex</strong><br><br>
+                ${escapeHtml(error.message)}<br><br>
+                <strong>Cosa fare:</strong><br>
+                • Controlla che tutti i campi siano compilati correttamente<br>
+                • Scarica il file .tex e controlla gli errori di compilazione<br>
+                • Verifica che pdflatex sia installato sul sistema<br>
+                • Riprova la compilazione
+            `;
+        }
+
+        showToast('Errore compilazione pdflatex', 'error', 6000);
     }
 }
 

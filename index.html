@@ -205,7 +205,6 @@
             <div class="preview-panel">
                 <div class="preview-tabs">
                     <button class="tab-btn active" data-tab="latex">📄 Codice LaTeX</button>
-                    <button class="tab-btn" data-tab="visual">👁️ Anteprima Visuale</button>
                     <button class="tab-btn" data-tab="pdf">📕 PDF Compilato</button>
                 </div>
 
@@ -220,12 +219,6 @@
                     </div>
                     <textarea id="latexEditor" class="latex-code latex-editor" style="display: none;" rows="30" spellcheck="false"></textarea>
                     <pre id="latexPreview" class="latex-code"><code>Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...</code></pre>
-                </div>
-
-                <div id="visualTab" class="tab-content">
-                    <div id="visualPreview" class="visual-preview">
-                        <p class="preview-placeholder">Clicca su "Genera LaTeX" per vedere l'anteprima visuale</p>
-                    </div>
                 </div>
 
                 <div id="pdfTab" class="tab-content">
@@ -254,8 +247,6 @@
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- SwiftLaTeX - pdflatex in browser via WebAssembly -->
-    <script src="https://cdn.jsdelivr.net/npm/@swiftlatex/pdftex.js@latest/PdfTeXEngine.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
