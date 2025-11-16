@@ -1269,38 +1269,25 @@ async function compilePDF(latexCode) {
     pdfLoading.style.display = 'flex';
 
     try {
-        showToast('Compilazione PDF in corso...', 'info', 2000);
+        showToast('Compilazione PDF con pdflatex in corso...', 'info', 2000);
 
-        // Prima prova con la classe verifica
-        let response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(latexCode), {
+        // Converti il documento per essere compilabile con pdflatex
+        const compilableLatex = convertToCompilableLatex(latexCode);
+
+        // Compila con LaTeX.Online usando pdflatex
+        const response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(compilableLatex), {
             method: 'GET',
         });
 
-        // Se fallisce con verifica class, prova con article class
         if (!response.ok) {
-            showToast('Tentativo con classe standard article...', 'info', 2000);
-
-            // Sostituisci verifica con article
-            const articleLatex = latexCode
-                .replace(/\\documentclass\{verifica\}/g, '\\documentclass{article}')
-                .replace(/\\intestazionesemplice/g, '')
-                .replace(/\\lineanome/g, '')
-                .replace(/\\totpunti\[.*?\]/g, 'Voto: _____ / 10');
-
-            response = await fetch('https://latexonline.cc/compile?text=' + encodeURIComponent(articleLatex), {
-                method: 'GET',
-            });
-        }
-
-        if (!response.ok) {
-            throw new Error(`Compilazione fallita. La classe LaTeX "verifica" non è supportata dal servizio online.`);
+            throw new Error(`Errore HTTP ${response.status}: impossibile compilare il documento`);
         }
 
         const pdfBlob = await response.blob();
 
         // Verifica che sia un PDF valido
-        if (pdfBlob.type !== 'application/pdf' && pdfBlob.size < 1000) {
-            throw new Error(`Il servizio online non supporta questa struttura LaTeX.`);
+        if (pdfBlob.size < 1000) {
+            throw new Error(`Compilazione fallita: output troppo piccolo`);
         }
 
         currentPdfBlob = pdfBlob;
@@ -1313,135 +1300,104 @@ async function compilePDF(latexCode) {
         pdfLoading.style.display = 'none';
         pdfViewer.style.display = 'block';
 
-        showToast('PDF compilato con successo!', 'success');
+        showToast('PDF compilato con successo tramite pdflatex!', 'success');
 
     } catch (error) {
         console.error('Errore compilazione PDF:', error);
 
-        // Fallback: usa la preview visuale come PDF stampabile
-        showPrintablePDFPreview();
+        pdfLoading.style.display = 'none';
+        pdfError.style.display = 'flex';
+
+        const errorMsg = document.getElementById('pdfErrorMessage');
+        errorMsg.textContent = `Si è verificato un errore durante la compilazione PDF: ${error.message}. ` +
+                               `Verifica il codice LaTeX o scarica il file .tex per compilarlo localmente.`;
+
+        showToast('Errore nella compilazione PDF', 'error');
     }
 }
 
-function showPrintablePDFPreview() {
-    const pdfLoading = document.getElementById('pdfLoading');
-    const pdfError = document.getElementById('pdfError');
-    const pdfViewer = document.getElementById('pdfViewer');
+function convertToCompilableLatex(latexCode) {
+    // Converti il documento dalla classe "verifica" ad "article"
+    // reimplementando tutti i comandi custom nel preambolo
 
-    pdfLoading.style.display = 'none';
-    pdfError.style.display = 'none';
+    // Estrai tempo e docente
+    const tempoMatch = latexCode.match(/\\tempo\{([^}]+)\}/);
+    const docenteMatch = latexCode.match(/\\docente\{([^}]+)\}/);
+    const tempo = tempoMatch ? tempoMatch[1] : '100 minuti';
+    const docente = docenteMatch ? docenteMatch[1] : '';
 
-    // Crea un iframe con la preview visuale stampabile
-    const visualPreview = document.getElementById('visualPreview').innerHTML;
+    // Estrai il contenuto del documento
+    const beginDocMatch = latexCode.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+    const documentContent = beginDocMatch ? beginDocMatch[1] : '';
 
-    const printableHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Verifica - Preview PDF</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Times New Roman', serif;
-            padding: 40px;
-            background: white;
-            color: #000;
-            line-height: 1.6;
-        }
-        @page {
-            size: A4;
-            margin: 2cm;
-        }
-        @media print {
-            body { padding: 0; }
-            .no-print { display: none; }
-        }
-        .pdf-document { max-width: 800px; margin: 0 auto; }
-        .pdf-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }
-        .pdf-title { font-size: 28px; font-weight: bold; margin-bottom: 15px; }
-        .pdf-meta { margin-top: 15px; }
-        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        .meta-grid div { padding: 8px; }
-        .student-info { border-top: 1px solid #ddd; padding-top: 10px; }
-        .pdf-section { margin: 30px 0; }
-        .pdf-item { margin: 15px 0 15px 20px; position: relative; }
-        .item-number { font-weight: bold; margin-right: 8px; }
-        .stella-icon { color: #ffa500; margin-right: 5px; }
-        .item-text { display: inline; }
-        .griglia-section { margin-top: 40px; }
-        .section-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; text-align: center; }
-        .pdf-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 12px; text-align: left; }
-        .pdf-table th { background: #f5f5f5; font-weight: bold; }
-        .punti-cell { text-align: center; }
-        .total-row { background: #f9f9f9; font-weight: bold; }
-        .print-button {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 24px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            z-index: 1000;
-        }
-        .print-button:hover { background: #5568d3; }
-        .download-tex-button {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            padding: 10px 20px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            z-index: 1000;
-        }
-        .download-tex-button:hover { background: #218838; }
-    </style>
-    <script>
-        window.MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
-                displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']]
-            },
-            startup: {
-                ready: () => {
-                    MathJax.startup.defaultReady();
-                    MathJax.startup.promise.then(() => {
-                        console.log('MathJax ready');
-                    });
-                }
-            }
-        };
-    </script>
-</head>
-<body>
-    <button class="print-button no-print" onclick="window.print()">🖨️ Stampa / Salva come PDF</button>
-    <button class="download-tex-button no-print" onclick="parent.downloadLatex()">💾 Scarica .tex</button>
-    ${visualPreview}
-</body>
-</html>
-    `;
+    // Crea un documento LaTeX compilabile con article class
+    const compilableDoc = `\\documentclass[a4paper,12pt]{article}
 
-    // Crea blob e URL
-    const blob = new Blob([printableHTML], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
+\\usepackage[utf8]{inputenc}
+\\usepackage[italian]{babel}
+\\usepackage[T1]{fontenc}
+\\usepackage{lmodern}
+\\usepackage{geometry}
+\\usepackage{enumitem}
+\\usepackage{amsmath}
+\\usepackage{amssymb}
+\\usepackage{graphicx}
+\\usepackage{fancyhdr}
+\\usepackage{tabularx}
 
-    pdfViewer.src = url;
-    pdfViewer.style.display = 'block';
+\\geometry{a4paper, margin=2cm}
 
-    showToast('Anteprima pronta! Usa il pulsante "Stampa/Salva come PDF" nell\'anteprima', 'success', 6000);
+% Ridefinisci i comandi della classe verifica
+\\newcommand{\\tempo}[1]{\\def\\tempovalore{#1}}
+\\newcommand{\\docente}[1]{\\def\\docentevalore{#1}}
+\\newcommand{\\lineanome}{%
+    \\vspace{0.5cm}
+    \\noindent\\textbf{Nome:} \\underline{\\hspace{5cm}} \\textbf{Cognome:} \\underline{\\hspace{5cm}}\\\\[0.3cm]
+    \\noindent\\textbf{Classe:} \\underline{\\hspace{3cm}} \\textbf{Data:} \\underline{\\hspace{3cm}}
+    \\vspace{0.5cm}
+}
+
+\\newcommand{\\intestazionesemplice}{%
+    \\begin{center}
+        {\\Large\\bfseries VERIFICA}\\\\[0.5cm]
+        \\textbf{Tempo a disposizione:} \\tempovalore\\\\
+        \\textbf{Docente:} \\docentevalore
+    \\end{center}
+    \\lineanome
+}
+
+% Definisci l'ambiente esercizi come enumerate
+\\newenvironment{esercizi}{%
+    \\begin{enumerate}[label=\\arabic*.,leftmargin=*,itemsep=0.8cm]
+}{%
+    \\end{enumerate}
+}
+
+% Comando totpunti per calcolare il voto
+\\newcommand{\\totpunti}[1]{%
+    \\vspace{1cm}
+    \\noindent\\textbf{VOTO:} \\underline{\\hspace{2cm}} / 10 \\quad (Formula: #1)
+}
+
+\\tempo{${tempo}}
+\\docente{${docente}}
+
+\\pagestyle{fancy}
+\\fancyhf{}
+\\fancyhead[L]{\\small Verifica}
+\\fancyhead[R]{\\small \\today}
+\\fancyfoot[C]{\\thepage}
+
+\\begin{document}
+
+\\intestazionesemplice
+
+${documentContent}
+
+\\end{document}
+`;
+
+    return compilableDoc;
 }
 
 function retryPdfCompilation() {
