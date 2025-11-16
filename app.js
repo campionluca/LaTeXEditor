@@ -43,6 +43,8 @@ let currentTemplate = `\\documentclass{verifica}
 
 {{INTESTAZIONE}}
 
+{{CONSEGNA}}
+
 \\begin{esercizi}
 {{ESERCIZI}}
 \\end{esercizi}
@@ -222,7 +224,7 @@ function setupEventListeners() {
 // === ESERCIZI ===
 function addEsercizio() {
     const id = eserciziCounter++;
-    esercizi.push({ id, testo: '', stella: false });
+    esercizi.push({ id, testo: '', stella: false, punti: 1 });
 
     const container = document.getElementById('eserciziContainer');
     const item = document.createElement('div');
@@ -250,6 +252,11 @@ function addEsercizio() {
                 oninput="updateEsercizio(${id}); updateCharCounter(${id}); scheduleAutosave(); scheduleRealtimeUpdate();"></textarea>
             <div class="char-counter" id="counter-esercizio-${id}">0 caratteri, 0 parole</div>
         </div>
+        <div class="form-group">
+            <label>Punti:</label>
+            <input type="number" id="punti-es-${id}" value="1" min="0" step="1"
+                oninput="updateEsercizio(${id}); scheduleAutosave(); scheduleRealtimeUpdate();">
+        </div>
     `;
 
     container.appendChild(item);
@@ -268,11 +275,13 @@ function removeEsercizio(id) {
 function updateEsercizio(id) {
     const testo = document.getElementById(`esercizio-text-${id}`)?.value || '';
     const stella = document.getElementById(`stella-${id}`)?.checked || false;
+    const punti = parseInt(document.getElementById(`punti-es-${id}`)?.value) || 1;
 
     const index = esercizi.findIndex(e => e.id === id);
     if (index !== -1) {
         esercizi[index].testo = testo;
         esercizi[index].stella = stella;
+        esercizi[index].punti = punti;
     }
 }
 
@@ -356,15 +365,16 @@ function generateLatex() {
 
     // Genera la sezione esercizi
     let eserciziText = '';
-    let numEserciziCompilati = 0;
+    let punteggiEsercizi = 0;
     esercizi.forEach(e => {
         if (e.testo) {
             const prefix = e.stella ? '($\\\\star$) ' : '';
             // Converti newline JavaScript in newline LaTeX
             const testoLatex = e.testo.replace(/\n/g, '\\\\ ');
-            // Aggiungi \punti{1} ad ogni esercizio
-            eserciziText += `    \\item ${prefix}${testoLatex} \\punti{1}\n`;
-            numEserciziCompilati++;
+            const punti = e.punti || 1;
+            // Aggiungi \punti{} ad ogni esercizio con punteggio personalizzato
+            eserciziText += `    \\item ${prefix}${testoLatex} \\punti{${punti}}\n`;
+            punteggiEsercizi += punti;
         }
     });
 
@@ -393,9 +403,9 @@ function generateLatex() {
         });
 
         // Aggiungi automaticamente il descrittore "Funzionamento" con somma punti esercizi
-        if (numEserciziCompilati > 0) {
-            descrittoriRows += `Funzionamento                                        & $\\_\\_\\_\\_$/${numEserciziCompilati}            \\\\ \\hline\n`;
-            totalePunti += numEserciziCompilati;
+        if (punteggiEsercizi > 0) {
+            descrittoriRows += `Funzionamento                                        & $\\_\\_\\_\\_$/${punteggiEsercizi}            \\\\ \\hline\n`;
+            totalePunti += punteggiEsercizi;
         }
 
         if (descrittoriRows === '') {
@@ -413,8 +423,8 @@ ${descrittoriRows}
 \\end{tabular}
 \\end{table}`;
     } else {
-        // Se la tabella non è mostrata, il totale è solo la somma degli esercizi
-        totalePunti = numEserciziCompilati;
+        // Se la tabella non è mostrata, il totale è solo la somma dei punti degli esercizi
+        totalePunti = punteggiEsercizi;
     }
 
     // Calcola la formula per \totpunti[] con voto max e min configurabili
@@ -439,11 +449,18 @@ ${descrittoriRows}
         }
     }
 
+    // Formatta la consegna generale
+    let consegnaLatex = '';
+    if (consegna && consegna.trim() !== '' && consegna !== 'Inserisci la consegna') {
+        consegnaLatex = `\\noindent\\textbf{Consegna:} ${consegna}\n\n\\vspace{0.3cm}`;
+    }
+
     // Sostituisci i placeholder nel template
     let latex = currentTemplate
         .replace('{{TEMPO}}', tempo)
         .replace('{{DOCENTE}}', docente)
         .replace('{{INTESTAZIONE}}', intestazioneCmd)
+        .replace('{{CONSEGNA}}', consegnaLatex)
         .replace('{{ESERCIZI}}', eserciziText)
         .replace('{{TABELLA}}', tabellaLatex)
         .replace('\\totpunti[]', `\\totpunti${totpuntiFormula}`);
@@ -590,6 +607,15 @@ function parseLatexToForm(latex) {
                 fullText = fullText.substring(stellaMatch[0].length);
             }
 
+            // Estrai punti da \punti{N}
+            const puntiMatch = fullText.match(/\\punti\{(\d+)\}/);
+            const punti = puntiMatch ? parseInt(puntiMatch[1]) : 1;
+
+            // Rimuovi \punti{N} dal testo
+            if (puntiMatch) {
+                fullText = fullText.replace(/\\punti\{\d+\}/, '').trim();
+            }
+
             // Rimuovi newlines e pulisci
             fullText = fullText.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -598,8 +624,10 @@ function parseLatexToForm(latex) {
                 const lastEsercizio = esercizi[esercizi.length - 1];
                 document.getElementById(`esercizio-text-${lastEsercizio.id}`).value = fullText;
                 document.getElementById(`stella-${lastEsercizio.id}`).checked = stella;
+                document.getElementById(`punti-es-${lastEsercizio.id}`).value = punti;
                 lastEsercizio.testo = fullText;
                 lastEsercizio.stella = stella;
+                lastEsercizio.punti = punti;
             }
         }
     }
@@ -781,6 +809,7 @@ function importProject(event) {
                 setTimeout(() => {
                     document.getElementById(`esercizio-text-${currentId}`).value = e.testo;
                     document.getElementById(`stella-${currentId}`).checked = e.stella;
+                    document.getElementById(`punti-es-${currentId}`).value = e.punti || 1;
                 }, 0);
             });
 
@@ -1307,6 +1336,7 @@ function retryPdfCompilation() {
 function duplicateEsercizio(id) {
     const sourceText = document.getElementById(`esercizio-text-${id}`)?.value || '';
     const sourceStella = document.getElementById(`stella-${id}`)?.checked || false;
+    const sourcePunti = document.getElementById(`punti-es-${id}`)?.value || '1';
 
     addEsercizio();
     const newId = eserciziCounter - 1;
@@ -1314,6 +1344,7 @@ function duplicateEsercizio(id) {
     setTimeout(() => {
         document.getElementById(`esercizio-text-${newId}`).value = sourceText;
         document.getElementById(`stella-${newId}`).checked = sourceStella;
+        document.getElementById(`punti-es-${newId}`).value = sourcePunti;
         updateEsercizio(newId);
         saveState();
     }, 0);
@@ -1601,6 +1632,7 @@ function loadPreset(presetName) {
         setTimeout(() => {
             document.getElementById(`esercizio-text-${currentId}`).value = e.testo;
             document.getElementById(`stella-${currentId}`).checked = e.stella;
+            document.getElementById(`punti-es-${currentId}`).value = e.punti || 1;
             updateEsercizio(currentId);
         }, 0);
     });
@@ -1689,6 +1721,7 @@ function loadCustomTemplate(id) {
         setTimeout(() => {
             document.getElementById(`esercizio-text-${currentId}`).value = e.testo;
             document.getElementById(`stella-${currentId}`).checked = e.stella;
+            document.getElementById(`punti-es-${currentId}`).value = e.punti || 1;
             updateEsercizio(currentId);
         }, 0);
     });
