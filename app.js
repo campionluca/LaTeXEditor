@@ -85,10 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeApp() {
     // Carica valori di default se non ci sono dati salvati
     if (!document.getElementById('tempo').value) {
-        document.getElementById('tempo').value = '100 minuti';
+        document.getElementById('tempo').value = '100';
     }
     if (!document.getElementById('docente').value) {
-        document.getElementById('docente').value = 'Proff. Luca Campion, Riccardo Rossi';
+        document.getElementById('docente').value = 'Luca Campion, Riccardo Rossi';
     }
 
     // Imposta l'editor LaTeX sempre in modalità modifica di default
@@ -342,8 +342,11 @@ function updateDescrittore(id) {
 
 // === GENERAZIONE LATEX ===
 function generateLatex() {
-    const tempo = document.getElementById('tempo').value || '100 minuti';
-    const docente = document.getElementById('docente').value || 'Proff. Luca Campion, Riccardo Rossi';
+    const tempoNum = document.getElementById('tempo').value || '100';
+    const tempo = `${tempoNum} minuti`;
+    const titoloDocente = document.getElementById('titoloDocente')?.value || 'Proff.';
+    const nomeDocente = document.getElementById('docente').value || 'Luca Campion, Riccardo Rossi';
+    const docente = `${titoloDocente} ${nomeDocente}`;
     const consegna = document.getElementById('consegna').value || '';
     const tipoIntestazione = document.getElementById('tipoIntestazione')?.value || 'semplice';
 
@@ -569,16 +572,25 @@ function importLatexToForm() {
 }
 
 function parseLatexToForm(latex) {
-    // Estrai tempo
+    // Estrai tempo (rimuovi "minuti" se presente)
     const tempoMatch = latex.match(/\\tempo\{([^}]+)\}/);
     if (tempoMatch) {
-        document.getElementById('tempo').value = tempoMatch[1];
+        const tempoValue = tempoMatch[1].replace(/\s*minuti?\s*/i, '').trim();
+        document.getElementById('tempo').value = tempoValue;
     }
 
-    // Estrai docente
+    // Estrai docente (separa titolo dal nome)
     const docenteMatch = latex.match(/\\docente\{([^}]+)\}/);
     if (docenteMatch) {
-        document.getElementById('docente').value = docenteMatch[1];
+        const docenteCompleto = docenteMatch[1];
+        // Cerca pattern: "Prof./Proff./Prof.ssa/Prof.sse Nome"
+        const titoloMatch = docenteCompleto.match(/^(Prof\.ssa|Prof\.sse|Proff\.|Prof\.)\s+(.+)$/);
+        if (titoloMatch) {
+            document.getElementById('titoloDocente').value = titoloMatch[1];
+            document.getElementById('docente').value = titoloMatch[2];
+        } else {
+            document.getElementById('docente').value = docenteCompleto;
+        }
     }
 
     // Estrai items/esercizi dall'ambiente esercizi
@@ -704,14 +716,24 @@ function loadTemplate() {
 }
 
 function parseTemplate(template) {
+    // Estrai tempo (rimuovi "minuti" se presente)
     const tempoMatch = template.match(/\\tempo\{([^}]+)\}/);
     if (tempoMatch) {
-        document.getElementById('tempo').value = tempoMatch[1];
+        const tempoValue = tempoMatch[1].replace(/\s*minuti?\s*/i, '').trim();
+        document.getElementById('tempo').value = tempoValue;
     }
 
+    // Estrai docente (separa titolo dal nome)
     const docenteMatch = template.match(/\\docente\{([^}]+)\}/);
     if (docenteMatch) {
-        document.getElementById('docente').value = docenteMatch[1];
+        const docenteCompleto = docenteMatch[1];
+        const titoloMatch = docenteCompleto.match(/^(Prof\.ssa|Prof\.sse|Proff\.|Prof\.)\s+(.+)$/);
+        if (titoloMatch) {
+            document.getElementById('titoloDocente').value = titoloMatch[1];
+            document.getElementById('docente').value = titoloMatch[2];
+        } else {
+            document.getElementById('docente').value = docenteCompleto;
+        }
     }
 
     const consegnaMatch = template.match(/\\item\s+\{\{([^}]+)\}\}/);
@@ -757,11 +779,13 @@ function newTemplate() {
 function exportProject() {
     const projectData = {
         tempo: document.getElementById('tempo').value,
+        titoloDocente: document.getElementById('titoloDocente').value,
         docente: document.getElementById('docente').value,
         consegna: document.getElementById('consegna').value,
         esercizi: esercizi.map(e => ({
             testo: document.getElementById(`esercizio-text-${e.id}`)?.value || '',
-            stella: document.getElementById(`stella-${e.id}`)?.checked || false
+            stella: document.getElementById(`stella-${e.id}`)?.checked || false,
+            punti: document.getElementById(`punti-es-${e.id}`)?.value || 1
         })),
         descrittori: descrittori.map(d => ({
             descrittore: document.getElementById(`desc-${d.id}`)?.value || '',
@@ -791,6 +815,7 @@ function importProject(event) {
 
             // Ripristina i dati
             document.getElementById('tempo').value = projectData.tempo || '';
+            document.getElementById('titoloDocente').value = projectData.titoloDocente || 'Proff.';
             document.getElementById('docente').value = projectData.docente || '';
             document.getElementById('consegna').value = projectData.consegna || '';
 
@@ -1613,8 +1638,19 @@ function loadPreset(presetName) {
     }
 
     // Imposta i valori di base
-    document.getElementById('tempo').value = preset.tempo;
-    document.getElementById('docente').value = preset.docente;
+    // Tempo: rimuovi "minuti" se presente
+    const tempoValue = preset.tempo.replace(/\s*minuti?\s*/i, '').trim();
+    document.getElementById('tempo').value = tempoValue;
+
+    // Docente: separa titolo dal nome
+    const titoloMatch = preset.docente.match(/^(Prof\.ssa|Prof\.sse|Proff\.|Prof\.)\s+(.+)$/);
+    if (titoloMatch) {
+        document.getElementById('titoloDocente').value = titoloMatch[1];
+        document.getElementById('docente').value = titoloMatch[2];
+    } else {
+        document.getElementById('docente').value = preset.docente;
+    }
+
     document.getElementById('consegna').value = preset.consegna;
 
     // Rimuovi esercizi esistenti
@@ -1674,11 +1710,13 @@ function saveAsTemplate() {
         timestamp: new Date().toISOString(),
         data: {
             tempo: document.getElementById('tempo').value,
+            titoloDocente: document.getElementById('titoloDocente').value,
             docente: document.getElementById('docente').value,
             consegna: document.getElementById('consegna').value,
             esercizi: esercizi.map(e => ({
                 testo: document.getElementById(`esercizio-text-${e.id}`)?.value || '',
-                stella: document.getElementById(`stella-${e.id}`)?.checked || false
+                stella: document.getElementById(`stella-${e.id}`)?.checked || false,
+                punti: document.getElementById(`punti-es-${e.id}`)?.value || 1
             })),
             descrittori: descrittori.map(d => ({
                 descrittore: document.getElementById(`desc-${d.id}`)?.value || '',
@@ -1703,6 +1741,7 @@ function loadCustomTemplate(id) {
 
     const data = template.data;
     document.getElementById('tempo').value = data.tempo || '';
+    document.getElementById('titoloDocente').value = data.titoloDocente || 'Proff.';
     document.getElementById('docente').value = data.docente || '';
     document.getElementById('consegna').value = data.consegna || '';
 
