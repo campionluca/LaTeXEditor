@@ -1,3 +1,31 @@
+// === TOAST NOTIFICATIONS ===
+function showToast(message, type = 'info', duration = 4000) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto-remove dopo duration
+    setTimeout(() => {
+        toast.classList.add('removing');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
 // Template LaTeX di base
 let currentTemplate = `\\documentclass{verifica}
 
@@ -70,6 +98,15 @@ function initializeApp() {
     if (!document.getElementById('docente').value) {
         document.getElementById('docente').value = 'Proff. Luca Campion, Riccardo Rossi';
     }
+
+    // Imposta l'editor LaTeX sempre in modalità modifica di default
+    const editableToggle = document.getElementById('editableToggle');
+    const preview = document.getElementById('latexPreview');
+    const editor = document.getElementById('latexEditor');
+
+    editableToggle.checked = true;
+    preview.style.display = 'none';
+    editor.style.display = 'block';
 }
 
 function setupEventListeners() {
@@ -342,16 +379,19 @@ function generateLatex() {
         }
     });
 
-    // Calcola la formula per \totpunti[]
-    const votoMinimo = parseFloat(document.getElementById('votoMinimo')?.value);
+    // Calcola la formula per \totpunti[] con voto max e min configurabili
+    const votoMin = parseFloat(document.getElementById('votoMinimo')?.value) || 0;
+    const votoMax = parseFloat(document.getElementById('votoMassimo')?.value) || 10;
     let totpuntiFormula = '';
 
-    if (votoMinimo && votoMinimo > 0 && totalePunti > 0) {
-        // Formula: [/totalePunti*(10-votoMin)/votoMin+1]
-        totpuntiFormula = `[/${totalePunti}*(10-${votoMinimo})/${votoMinimo}+1]`;
-    } else if (totalePunti > 0) {
-        // Formula semplice: [/totalePunti*10]
-        totpuntiFormula = `[/${totalePunti}*10]`;
+    if (totalePunti > 0) {
+        if (votoMin > 0) {
+            // Formula con voto minimo: [/totalePunti*(votoMax-votoMin)/votoMin+votoMin]
+            totpuntiFormula = `[/${totalePunti}*(${votoMax}-${votoMin})/${votoMin}+${votoMin}]`;
+        } else {
+            // Formula semplice: [/totalePunti*votoMax]
+            totpuntiFormula = `[/${totalePunti}*${votoMax}]`;
+        }
     } else {
         // Default se non ci sono descrittori
         totpuntiFormula = '[]';
@@ -576,7 +616,7 @@ function downloadLatex() {
     const latexCode = document.getElementById('latexPreview').textContent;
 
     if (latexCode === 'Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...') {
-        alert('Genera prima il codice LaTeX cliccando su "Genera LaTeX"!');
+        showToast('Genera prima il codice LaTeX cliccando su "Genera LaTeX"!', 'warning');
         return;
     }
 
@@ -595,7 +635,7 @@ function copyCode() {
     const latexCode = document.getElementById('latexPreview').textContent;
 
     if (latexCode === 'Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...') {
-        alert('Genera prima il codice LaTeX cliccando su "Genera LaTeX"!');
+        showToast('Genera prima il codice LaTeX cliccando su "Genera LaTeX"!', 'warning');
         return;
     }
 
@@ -642,7 +682,7 @@ function importLatexToForm() {
     }
 
     if (!latexCode || latexCode === 'Il codice LaTeX apparirà qui dopo aver cliccato "Genera LaTeX"...') {
-        alert('Nessun codice LaTeX da importare. Genera prima il LaTeX o attiva la modalità modifica.');
+        showToast('Nessun codice LaTeX da importare. Genera prima il LaTeX o attiva la modalità modifica.', 'warning');
         return;
     }
 
@@ -653,10 +693,10 @@ function importLatexToForm() {
     try {
         // Parse LaTeX code e riempi i campi
         parseLatexToForm(latexCode);
-        alert('✅ Codice LaTeX importato con successo nei campi!');
+        showToast('Codice LaTeX importato con successo nei campi!', 'success');
         saveState();
     } catch (error) {
-        alert('❌ Errore durante l\'importazione: ' + error.message);
+        showToast('Errore durante l\'importazione: ' + error.message, 'error');
         console.error('Import error:', error);
     }
 }
@@ -747,14 +787,26 @@ function parseLatexToForm(latex) {
         }
     }
 
-    // Estrai voto minimo da \totpunti[] se presente
-    const totpuntiMatch = latex.match(/\\totpunti\[\/\d+\*\(10-([0-9.]+)\)\/[0-9.]+\+1\]/);
-    if (totpuntiMatch) {
-        const votoMin = totpuntiMatch[1];
+    // Estrai voto min e max da \totpunti[]
+    // Formula con voto minimo: [/totalePunti*(votoMax-votoMin)/votoMin+votoMin]
+    const totpuntiComplexMatch = latex.match(/\\totpunti\[\/\d+\*\(([0-9.]+)-([0-9.]+)\)\/[0-9.]+\+([0-9.]+)\]/);
+    if (totpuntiComplexMatch) {
+        const votoMax = totpuntiComplexMatch[1];
+        const votoMin = totpuntiComplexMatch[3]; // Il votoMin è sia nel denominatore che sommato alla fine
+        document.getElementById('votoMassimo').value = votoMax;
         document.getElementById('votoMinimo').value = votoMin;
     } else {
-        // Se usa la formula semplice, resetta voto minimo
-        document.getElementById('votoMinimo').value = '';
+        // Formula semplice: [/totalePunti*votoMax]
+        const totpuntiSimpleMatch = latex.match(/\\totpunti\[\/\d+\*([0-9.]+)\]/);
+        if (totpuntiSimpleMatch) {
+            const votoMax = totpuntiSimpleMatch[1];
+            document.getElementById('votoMassimo').value = votoMax;
+            document.getElementById('votoMinimo').value = '0';
+        } else {
+            // Default
+            document.getElementById('votoMassimo').value = '10';
+            document.getElementById('votoMinimo').value = '0';
+        }
     }
 }
 
@@ -765,10 +817,10 @@ function loadTemplate() {
         .then(data => {
             currentTemplate = data;
             parseTemplate(data);
-            alert('Template caricato con successo!');
+            showToast('Template caricato con successo!', 'success');
         })
         .catch(error => {
-            alert('Impossibile caricare il template. Assicurati che il file templateGestionaleLab.tex sia presente.');
+            showToast('Impossibile caricare il template. Assicurati che il file templateGestionaleLab.tex sia presente.', 'error');
             console.error(error);
         });
 }
@@ -900,10 +952,10 @@ function importProject(event) {
                 }, 0);
             });
 
-            alert('Progetto importato con successo!');
+            showToast('Progetto importato con successo!', 'success');
             saveState();
         } catch (error) {
-            alert('Errore nell\'importazione del file JSON: ' + error.message);
+            showToast('Errore nell\'importazione del file JSON: ' + error.message, 'error');
         }
     };
     reader.readAsText(file);
@@ -1550,7 +1602,7 @@ function saveAsTemplate() {
     customTemplates.push(template);
     localStorage.setItem('customTemplates', JSON.stringify(customTemplates));
     updateCustomTemplatesMenu();
-    alert(`Template "${name}" salvato con successo!`);
+    showToast(`Template "${name}" salvato con successo!`, 'success');
 }
 
 function loadCustomTemplate(id) {

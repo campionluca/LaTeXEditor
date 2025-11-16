@@ -182,11 +182,20 @@
                     <button id="addDescrittoreBtn" class="btn btn-small">➕ Aggiungi Descrittore</button>
 
                     <div class="form-group" style="margin-top: 20px;">
-                        <label for="votoMinimo">Voto Minimo (opzionale):</label>
-                        <input type="number" id="votoMinimo" placeholder="es. 1, 2, 3..." min="0" max="10" step="0.5">
-                        <small style="display: block; margin-top: 5px; color: #666;">
-                            Se specificato, usa formula: [/totalePunti*(10-votoMin)/votoMin+1]<br>
-                            Altrimenti usa: [/totalePunti*10]
+                        <label>Configurazione Voti:</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+                            <div>
+                                <label for="votoMinimo">Voto Minimo:</label>
+                                <input type="number" id="votoMinimo" placeholder="0" value="0" min="0" max="10" step="0.5">
+                            </div>
+                            <div>
+                                <label for="votoMassimo">Voto Massimo:</label>
+                                <input type="number" id="votoMassimo" placeholder="10" value="10" min="0" max="10" step="0.5">
+                            </div>
+                        </div>
+                        <small style="display: block; margin-top: 10px; color: #666;">
+                            Formula generata: <strong>[/totalePunti*(votoMax-votoMin)/votoMin+votoMin]</strong><br>
+                            Se votoMin = 0, usa formula semplice: <strong>[/totalePunti*votoMax]</strong>
                         </small>
                     </div>
                 </div>
@@ -220,6 +229,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
 
     <script src="app.js"></script>
 </body>
