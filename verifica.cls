@@ -125,6 +125,7 @@
     \hline \\[-.2cm]
     Cognome e nome  \\[.2cm]
     \@@lineanome    \\[.2cm]
+    Classe: \underline{\hspace{4cm}} \hfill Data: \underline{\hspace{3cm}} \\[.2cm]
     \@@classe       \\[.2cm]
     \hline
   \end{tabular}}
@@ -176,6 +177,7 @@
   \fi
 \fi
 \@@lineanome
+\noindent Classe: \underline{\hspace{4cm}} \hfill Data: \underline{\hspace{3cm}}\\[.3cm]
 \null\vspace{-1cm}
 \noindent\hrulefill \\
 \noindent\makebox[.3\linewidth][l]{\small\@istituto} \hfill%
@@ -216,6 +218,7 @@
   \fi
 \fi
 \@@lineanome
+\noindent Classe: \underline{\hspace{4cm}} \hfill Data: \underline{\hspace{3cm}}\\[.3cm]
 \noindent\makebox[.3\linewidth][l]{\small\@istituto} \hfill%
 \makebox[.3\linewidth]{\@@classe} \hfill%
 \makebox[.3\linewidth][r]{\small\@data}%
