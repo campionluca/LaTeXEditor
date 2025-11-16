@@ -32,6 +32,11 @@ def compile_latex():
             tex_path = os.path.join(tmpdir, 'document.tex')
             pdf_path = os.path.join(tmpdir, 'document.pdf')
 
+            # Copia verifica.cls locale nella directory temporanea (se esiste)
+            verifica_cls_path = os.path.join(os.path.dirname(__file__), 'verifica.cls')
+            if os.path.exists(verifica_cls_path):
+                shutil.copy(verifica_cls_path, tmpdir)
+
             # Scrivi il file .tex
             with open(tex_path, 'w', encoding='utf-8') as f:
                 f.write(latex_code)
