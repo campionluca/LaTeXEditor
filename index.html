@@ -13,11 +13,11 @@
             <p class="subtitle">Editor visuale per template di verifiche scolastiche</p>
         </header>
 
-        <div class="toolbar">
+        <div class="toolbar" id="mainToolbar">
             <div class="toolbar-group">
                 <button id="newTemplateBtn" class="btn btn-secondary">➕ Nuovo</button>
                 <div class="dropdown">
-                    <button id="presetsBtn" class="btn btn-primary">📚 Template Preimpostati ▼</button>
+                    <button id="presetsBtn" class="btn btn-primary">📚 Template ▼</button>
                     <div id="presetsMenu" class="dropdown-menu">
                         <button class="dropdown-item" data-preset="matematica">📐 Matematica</button>
                         <button class="dropdown-item" data-preset="italiano">📖 Italiano</button>
@@ -25,26 +25,41 @@
                         <button class="dropdown-item" data-preset="informatica">💻 Informatica</button>
                     </div>
                 </div>
-                <button id="loadTemplateBtn" class="btn btn-primary">📂 Carica Template</button>
+                <div class="dropdown">
+                    <button id="customTemplatesBtn" class="btn btn-primary">💾 Miei Template ▼</button>
+                    <div id="customTemplatesMenu" class="dropdown-menu">
+                        <div id="customTemplatesList"></div>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" id="saveAsTemplateBtn">➕ Salva come Template</button>
+                    </div>
+                </div>
+                <button id="loadTemplateBtn" class="btn btn-primary">📂 Carica</button>
             </div>
             <div class="toolbar-separator"></div>
             <div class="toolbar-group">
-                <button id="generateBtn" class="btn btn-success">🔄 Genera (Ctrl+G)</button>
-                <button id="downloadBtn" class="btn btn-download">💾 Scarica (Ctrl+S)</button>
+                <button id="generateBtn" class="btn btn-success">🔄 Genera</button>
+                <button id="downloadBtn" class="btn btn-download">💾 Scarica</button>
                 <button id="printBtn" class="btn btn-info">🖨️ Stampa</button>
             </div>
             <div class="toolbar-separator"></div>
             <div class="toolbar-group">
-                <button id="exportJsonBtn" class="btn btn-info">📤 Esporta</button>
-                <button id="importJsonBtn" class="btn btn-info">📥 Importa</button>
+                <button id="exportJsonBtn" class="btn btn-info">📤</button>
+                <button id="importJsonBtn" class="btn btn-info">📥</button>
                 <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
             </div>
             <div class="toolbar-separator"></div>
             <div class="toolbar-group">
                 <button id="undoBtn" class="btn btn-secondary">↶</button>
                 <button id="redoBtn" class="btn btn-secondary">↷</button>
+                <button id="versionsBtn" class="btn btn-info" title="Cronologia Versioni">📜</button>
+            </div>
+            <div class="toolbar-separator"></div>
+            <div class="toolbar-group">
+                <button id="realtimeBtn" class="btn btn-secondary" title="Anteprima Tempo Reale">⚡</button>
+                <button id="fullscreenBtn" class="btn btn-secondary" title="Modalità Fullscreen">⛶</button>
+                <button id="compactBtn" class="btn btn-secondary" title="Modalità Compatta">◧</button>
                 <button id="themeToggleBtn" class="btn btn-theme">🌓</button>
-                <button id="statsBtn" class="btn btn-info">📊 Statistiche</button>
+                <button id="statsBtn" class="btn btn-info">📊</button>
             </div>
             <span id="autosaveStatus" class="autosave-status">💾 Salvato automaticamente</span>
         </div>
@@ -91,6 +106,29 @@
                 <li><kbd>Ctrl</kbd> + <kbd>E</kbd> - Esporta JSON</li>
                 <li><kbd>F1</kbd> - Mostra/Nascondi questa guida</li>
             </ul>
+        </div>
+
+        <!-- Version History Panel -->
+        <div id="versionsPanel" class="side-panel">
+            <div class="panel-header">
+                <h3>📜 Cronologia Versioni</h3>
+                <button class="btn-close" onclick="document.getElementById('versionsPanel').classList.remove('show')">✕</button>
+            </div>
+            <div class="panel-content">
+                <div id="versionsList"></div>
+            </div>
+        </div>
+
+        <!-- Suggestions Panel -->
+        <div id="suggestionsPanel" class="side-panel" style="left: -350px; right: auto;">
+            <div class="panel-header">
+                <h3>💡 Suggerimenti</h3>
+                <button class="btn-close" onclick="document.getElementById('suggestionsPanel').classList.remove('show')">✕</button>
+            </div>
+            <div class="panel-content">
+                <button class="suggestion-btn" onclick="openSuggestionsPanel()">💡 Mostra Suggerimenti</button>
+                <div id="suggestionsList"></div>
+            </div>
         </div>
 
         <div class="main-content">

@@ -105,6 +105,16 @@ function setupEventListeners() {
         document.getElementById('statsPanel').classList.remove('show');
     });
 
+    // Custom templates
+    document.getElementById('customTemplatesBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('customTemplatesMenu').classList.toggle('show');
+    });
+    document.getElementById('saveAsTemplateBtn').addEventListener('click', () => {
+        saveAsTemplate();
+        document.getElementById('customTemplatesMenu').classList.remove('show');
+    });
+
     // Template preimpostati
     document.getElementById('presetsBtn').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -114,14 +124,23 @@ function setupEventListeners() {
     document.querySelectorAll('.dropdown-item').forEach(item => {
         item.addEventListener('click', (e) => {
             const preset = e.target.dataset.preset;
-            loadPreset(preset);
-            document.getElementById('presetsMenu').classList.remove('show');
+            if (preset) {
+                loadPreset(preset);
+                document.getElementById('presetsMenu').classList.remove('show');
+            }
         });
     });
+
+    // Nuove funzionalità avanzate
+    document.getElementById('versionsBtn').addEventListener('click', showVersionHistory);
+    document.getElementById('realtimeBtn').addEventListener('click', toggleRealtime);
+    document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+    document.getElementById('compactBtn').addEventListener('click', toggleCompactMode);
 
     // Chiudi dropdown quando si clicca fuori
     document.addEventListener('click', () => {
         document.getElementById('presetsMenu').classList.remove('show');
+        document.getElementById('customTemplatesMenu').classList.remove('show');
     });
 
     // Tab switching
@@ -132,13 +151,25 @@ function setupEventListeners() {
         });
     });
 
-    // Autosave su input changes
-    document.getElementById('tempo').addEventListener('input', scheduleAutosave);
-    document.getElementById('docente').addEventListener('input', scheduleAutosave);
-    document.getElementById('consegna').addEventListener('input', scheduleAutosave);
+    // Autosave su input changes + realtime preview
+    document.getElementById('tempo').addEventListener('input', () => {
+        scheduleAutosave();
+        scheduleRealtimeUpdate();
+    });
+    document.getElementById('docente').addEventListener('input', () => {
+        scheduleAutosave();
+        scheduleRealtimeUpdate();
+    });
+    document.getElementById('consegna').addEventListener('input', () => {
+        scheduleAutosave();
+        scheduleRealtimeUpdate();
+    });
 
     // Keyboard shortcuts
     document.addEventListener('keydown', handleKeyboardShortcuts);
+
+    // Initialize custom templates menu
+    updateCustomTemplatesMenu();
 
     // Salva stato iniziale
     saveState();
@@ -172,11 +203,13 @@ function addEsercizio() {
             <label>Testo:</label>
             <textarea id="esercizio-text-${id}" rows="2"
                 placeholder="Descrizione dell'esercizio..."
-                oninput="updateEsercizio(${id}); scheduleAutosave();"></textarea>
+                oninput="updateEsercizio(${id}); updateCharCounter(${id}); scheduleAutosave(); scheduleRealtimeUpdate();"></textarea>
+            <div class="char-counter" id="counter-esercizio-${id}">0 caratteri, 0 parole</div>
         </div>
     `;
 
     container.appendChild(item);
+    updateCharCounter(id);
 }
 
 function removeEsercizio(id) {
@@ -1167,6 +1200,408 @@ function loadPreset(presetName) {
         saveState();
     }, 100);
 }
+
+// === CUSTOM TEMPLATES ===
+let customTemplates = JSON.parse(localStorage.getItem('customTemplates') || '[]');
+
+function saveAsTemplate() {
+    const name = prompt('Nome del template:');
+    if (!name) return;
+
+    const template = {
+        id: Date.now(),
+        name: name,
+        timestamp: new Date().toISOString(),
+        data: {
+            tempo: document.getElementById('tempo').value,
+            docente: document.getElementById('docente').value,
+            consegna: document.getElementById('consegna').value,
+            esercizi: esercizi.map(e => ({
+                testo: document.getElementById(`esercizio-text-${e.id}`)?.value || '',
+                stella: document.getElementById(`stella-${e.id}`)?.checked || false
+            })),
+            descrittori: descrittori.map(d => ({
+                descrittore: document.getElementById(`desc-${d.id}`)?.value || '',
+                punti: document.getElementById(`punti-${d.id}`)?.value || ''
+            }))
+        }
+    };
+
+    customTemplates.push(template);
+    localStorage.setItem('customTemplates', JSON.stringify(customTemplates));
+    updateCustomTemplatesMenu();
+    alert(`Template "${name}" salvato con successo!`);
+}
+
+function loadCustomTemplate(id) {
+    const template = customTemplates.find(t => t.id === id);
+    if (!template) return;
+
+    if (!confirm(`Caricare il template "${template.name}"? I dati correnti andranno persi.`)) {
+        return;
+    }
+
+    const data = template.data;
+    document.getElementById('tempo').value = data.tempo || '';
+    document.getElementById('docente').value = data.docente || '';
+    document.getElementById('consegna').value = data.consegna || '';
+
+    // Rimuovi esercizi esistenti
+    esercizi.forEach(e => {
+        const item = document.getElementById(`esercizio-${e.id}`);
+        if (item) item.remove();
+    });
+    esercizi = [];
+    eserciziCounter = 1;
+
+    // Aggiungi nuovi esercizi
+    data.esercizi.forEach(e => {
+        addEsercizio();
+        const currentId = eserciziCounter - 1;
+        setTimeout(() => {
+            document.getElementById(`esercizio-text-${currentId}`).value = e.testo;
+            document.getElementById(`stella-${currentId}`).checked = e.stella;
+            updateEsercizio(currentId);
+        }, 0);
+    });
+
+    // Rimuovi descrittori esistenti
+    descrittori.forEach(d => {
+        const item = document.getElementById(`descrittore-${d.id}`);
+        if (item) item.remove();
+    });
+    descrittori = [];
+    descrittoreCounter = 1;
+
+    // Aggiungi nuovi descrittori
+    data.descrittori.forEach(d => {
+        addDescrittore();
+        const currentId = descrittoreCounter - 1;
+        setTimeout(() => {
+            document.getElementById(`desc-${currentId}`).value = d.descrittore;
+            document.getElementById(`punti-${currentId}`).value = d.punti;
+            updateDescrittore(currentId);
+        }, 0);
+    });
+
+    setTimeout(() => saveState(), 100);
+}
+
+function deleteCustomTemplate(id) {
+    const template = customTemplates.find(t => t.id === id);
+    if (!template) return;
+
+    if (confirm(`Eliminare il template "${template.name}"?`)) {
+        customTemplates = customTemplates.filter(t => t.id !== id);
+        localStorage.setItem('customTemplates', JSON.stringify(customTemplates));
+        updateCustomTemplatesMenu();
+    }
+}
+
+function updateCustomTemplatesMenu() {
+    const list = document.getElementById('customTemplatesList');
+    if (customTemplates.length === 0) {
+        list.innerHTML = '<div style="padding: 10px; text-align: center; color: #999;">Nessun template salvato</div>';
+        return;
+    }
+
+    list.innerHTML = customTemplates.map(t => `
+        <div class="dropdown-item-custom" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px;">
+            <span onclick="loadCustomTemplate(${t.id})" style="flex: 1; cursor: pointer;">${t.name}</span>
+            <button onclick="event.stopPropagation(); deleteCustomTemplate(${t.id})"
+                    style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px;">🗑️</button>
+        </div>
+    `).join('');
+}
+
+// === VERSION HISTORY ===
+let versions = JSON.parse(localStorage.getItem('documentVersions') || '[]');
+const MAX_VERSIONS = 20;
+
+function saveVersion() {
+    const version = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        data: {
+            tempo: document.getElementById('tempo').value,
+            docente: document.getElementById('docente').value,
+            consegna: document.getElementById('consegna').value,
+            esercizi: esercizi.map(e => ({
+                id: e.id,
+                testo: document.getElementById(`esercizio-text-${e.id}`)?.value || '',
+                stella: document.getElementById(`stella-${e.id}`)?.checked || false
+            })),
+            descrittori: descrittori.map(d => ({
+                id: d.id,
+                descrittore: document.getElementById(`desc-${d.id}`)?.value || '',
+                punti: document.getElementById(`punti-${d.id}`)?.value || ''
+            }))
+        }
+    };
+
+    versions.unshift(version);
+    if (versions.length > MAX_VERSIONS) {
+        versions = versions.slice(0, MAX_VERSIONS);
+    }
+
+    localStorage.setItem('documentVersions', JSON.stringify(versions));
+}
+
+function loadVersion(id) {
+    const version = versions.find(v => v.id === id);
+    if (!version) return;
+
+    if (!confirm('Ripristinare questa versione? I dati correnti andranno persi.')) {
+        return;
+    }
+
+    const data = version.data;
+    document.getElementById('tempo').value = data.tempo;
+    document.getElementById('docente').value = data.docente;
+    document.getElementById('consegna').value = data.consegna;
+
+    // Ripristina esercizi
+    esercizi.forEach(e => {
+        const item = document.getElementById(`esercizio-${e.id}`);
+        if (item) item.remove();
+    });
+    esercizi = [];
+
+    data.esercizi.forEach(e => {
+        eserciziCounter = Math.max(eserciziCounter, e.id + 1);
+        esercizi.push({ id: e.id, testo: e.testo, stella: e.stella });
+
+        const container = document.getElementById('eserciziContainer');
+        const item = document.createElement('div');
+        item.className = 'esercizio-item';
+        item.id = `esercizio-${e.id}`;
+        item.innerHTML = `
+            <h4>
+                Esercizio #${e.id}
+                <div>
+                    <button class="btn btn-secondary btn-small" onclick="duplicateEsercizio(${e.id})" title="Duplica esercizio">📋 Duplica</button>
+                    <button class="btn btn-danger btn-small" onclick="removeEsercizio(${e.id})">🗑️ Rimuovi</button>
+                </div>
+            </h4>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="stella-${e.id}" ${e.stella ? 'checked' : ''} onchange="updateEsercizio(${e.id}); scheduleAutosave();">
+                    Esercizio con stella ($\\star$)
+                </label>
+            </div>
+            <div class="form-group">
+                <label>Testo:</label>
+                <textarea id="esercizio-text-${e.id}" rows="2"
+                    placeholder="Descrizione dell'esercizio..."
+                    oninput="updateEsercizio(${e.id}); updateCharCounter(${e.id}); scheduleAutosave();">${escapeHtml(e.testo)}</textarea>
+                <div class="char-counter" id="counter-esercizio-${e.id}"></div>
+            </div>
+        `;
+        container.appendChild(item);
+        updateCharCounter(e.id);
+    });
+
+    // Ripristina descrittori
+    descrittori.forEach(d => {
+        const item = document.getElementById(`descrittore-${d.id}`);
+        if (item) item.remove();
+    });
+    descrittori = [];
+
+    data.descrittori.forEach(d => {
+        descrittoreCounter = Math.max(descrittoreCounter, d.id + 1);
+        descrittori.push({ id: d.id, descrittore: d.descrittore, punti: d.punti });
+
+        const container = document.getElementById('descrittoriContainer');
+        const item = document.createElement('div');
+        item.className = 'descrittore-item';
+        item.id = `descrittore-${d.id}`;
+        item.innerHTML = `
+            <h4>
+                Descrittore #${d.id}
+                <div>
+                    <button class="btn btn-secondary btn-small" onclick="duplicateDescrittore(${d.id})" title="Duplica descrittore">📋 Duplica</button>
+                    <button class="btn btn-danger btn-small" onclick="removeDescrittore(${d.id})">🗑️ Rimuovi</button>
+                </div>
+            </h4>
+            <div class="descrittore-fields">
+                <div class="form-group">
+                    <label>Descrizione:</label>
+                    <input type="text" id="desc-${d.id}" value="${escapeHtml(d.descrittore)}" placeholder="es. Comprensione del testo"
+                           oninput="updateDescrittore(${d.id}); scheduleAutosave();">
+                </div>
+                <div class="form-group">
+                    <label>Punti:</label>
+                    <input type="number" id="punti-${d.id}" value="${escapeHtml(d.punti)}" placeholder="10"
+                           oninput="updateDescrittore(${d.id}); scheduleAutosave();">
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+
+    document.getElementById('versionsPanel').classList.remove('show');
+    saveState();
+}
+
+function showVersionHistory() {
+    const panel = document.getElementById('versionsPanel');
+    const list = document.getElementById('versionsList');
+
+    if (versions.length === 0) {
+        list.innerHTML = '<p style="text-align: center; color: #999;">Nessuna versione salvata</p>';
+    } else {
+        list.innerHTML = versions.map(v => {
+            const date = new Date(v.timestamp);
+            const preview = v.data.consegna ? v.data.consegna.substring(0, 50) + '...' : 'Documento senza consegna';
+
+            return `
+                <div class="version-item">
+                    <div class="version-time">${date.toLocaleString('it-IT')}</div>
+                    <div class="version-preview">${escapeHtml(preview)}</div>
+                    <div class="version-actions">
+                        <button class="btn btn-small btn-primary" onclick="loadVersion(${v.id})">Ripristina</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    panel.classList.toggle('show');
+}
+
+// === REAL-TIME PREVIEW ===
+let realtimeMode = false;
+let realtimeTimeout = null;
+
+function toggleRealtime() {
+    realtimeMode = !realtimeMode;
+    const btn = document.getElementById('realtimeBtn');
+
+    if (realtimeMode) {
+        btn.classList.add('realtime-active');
+        btn.title = 'Anteprima Tempo Reale: ATTIVA';
+        generateLatex(); // Genera immediatamente
+    } else {
+        btn.classList.remove('realtime-active');
+        btn.title = 'Anteprima Tempo Reale: DISATTIVA';
+    }
+}
+
+function scheduleRealtimeUpdate() {
+    if (!realtimeMode) return;
+
+    clearTimeout(realtimeTimeout);
+    realtimeTimeout = setTimeout(() => {
+        generateLatex();
+    }, 1000);
+}
+
+// === FULLSCREEN & COMPACT MODE ===
+function toggleFullscreen() {
+    document.body.classList.toggle('fullscreen-mode');
+    const btn = document.getElementById('fullscreenBtn');
+    if (document.body.classList.contains('fullscreen-mode')) {
+        btn.textContent = '⛶';
+        btn.title = 'Esci da Fullscreen';
+    } else {
+        btn.textContent = '⛶';
+        btn.title = 'Modalità Fullscreen';
+    }
+}
+
+function toggleCompactMode() {
+    document.body.classList.toggle('compact-mode');
+    const btn = document.getElementById('compactBtn');
+    if (document.body.classList.contains('compact-mode')) {
+        btn.textContent = '◧';
+        btn.title = 'Modalità Normale';
+    } else {
+        btn.textContent = '◧';
+        btn.title = 'Modalità Compatta';
+    }
+}
+
+// === CHARACTER COUNTER ===
+function updateCharCounter(id) {
+    const textarea = document.getElementById(`esercizio-text-${id}`);
+    const counter = document.getElementById(`counter-esercizio-${id}`);
+
+    if (!textarea || !counter) return;
+
+    const text = textarea.value;
+    const chars = text.length;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+
+    counter.textContent = `${chars} caratteri, ${words} parole`;
+
+    // Warning/error colors
+    counter.classList.remove('warning', 'error');
+    if (chars > 500) counter.classList.add('error');
+    else if (chars > 300) counter.classList.add('warning');
+}
+
+// === SMART SUGGESTIONS ===
+const suggestionsBySubject = {
+    matematica: [
+        { text: 'Correttezza del procedimento', punti: '15' },
+        { text: 'Correttezza del risultato', punti: '10' },
+        { text: 'Chiarezza espositiva', punti: '5' },
+        { text: 'Uso corretto della terminologia', punti: '5' }
+    ],
+    italiano: [
+        { text: 'Comprensione del testo', punti: '12' },
+        { text: 'Capacità di analisi', punti: '10' },
+        { text: 'Proprietà di linguaggio', punti: '8' },
+        { text: 'Coerenza argomentativa', punti: '5' }
+    ],
+    scienze: [
+        { text: 'Conoscenza dei contenuti', punti: '14' },
+        { text: 'Uso del linguaggio scientifico', punti: '8' },
+        { text: 'Capacità di sintesi', punti: '8' },
+        { text: 'Precisione terminologica', punti: '5' }
+    ],
+    generale: [
+        { text: 'Completezza della risposta', punti: '10' },
+        { text: 'Organizzazione del testo', punti: '8' },
+        { text: 'Correttezza ortografica', punti: '5' }
+    ]
+};
+
+function openSuggestionsPanel() {
+    const panel = document.getElementById('suggestionsPanel');
+    const list = document.getElementById('suggestionsList');
+
+    const allSuggestions = Object.values(suggestionsBySubject).flat();
+    const uniqueSuggestions = Array.from(new Set(allSuggestions.map(s => JSON.stringify(s))))
+        .map(s => JSON.parse(s));
+
+    list.innerHTML = uniqueSuggestions.map((s, i) => `
+        <div class="suggestion-item">
+            <span class="suggestion-text">${s.text} (${s.punti} punti)</span>
+            <button class="suggestion-add" onclick="addSuggestionAsDescrittore('${s.text}', '${s.punti}')">Aggiungi</button>
+        </div>
+    `).join('');
+
+    panel.classList.toggle('show');
+}
+
+function addSuggestionAsDescrittore(text, punti) {
+    addDescrittore();
+    const newId = descrittoreCounter - 1;
+
+    setTimeout(() => {
+        document.getElementById(`desc-${newId}`).value = text;
+        document.getElementById(`punti-${newId}`).value = punti;
+        updateDescrittore(newId);
+        saveState();
+    }, 0);
+}
+
+// Auto-save version every 5 minutes
+setInterval(() => {
+    saveVersion();
+}, 5 * 60 * 1000);
 
 // === UTILITIES ===
 function escapeHtml(text) {

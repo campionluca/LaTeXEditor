@@ -736,6 +736,244 @@ body.dark-theme .warning-section {
     border-left-color: #ffc107;
 }
 
+/* Side Panels */
+.side-panel {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 380px;
+    height: 100vh;
+    background: white;
+    box-shadow: -5px 0 20px rgba(0,0,0,0.3);
+    transition: right 0.3s ease, left 0.3s ease;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+}
+
+.side-panel.show {
+    right: 0;
+}
+
+.side-panel[style*="left"] {
+    left: -400px;
+    right: auto;
+}
+
+.side-panel[style*="left"].show {
+    left: 0;
+}
+
+.panel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.panel-content {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Version Item */
+.version-item {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #667eea;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.version-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.version-time {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.version-preview {
+    font-size: 14px;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.version-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.version-actions button {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* Dropdown Divider */
+.dropdown-divider {
+    height: 1px;
+    background: #e9ecef;
+    margin: 5px 0;
+}
+
+/* Suggestion Button */
+.suggestion-btn {
+    width: 100%;
+    padding: 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: background 0.2s;
+}
+
+.suggestion-btn:hover {
+    background: #5568d3;
+}
+
+.suggestion-item {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.suggestion-text {
+    flex: 1;
+    font-size: 14px;
+}
+
+.suggestion-add {
+    padding: 6px 12px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.suggestion-add:hover {
+    background: #218838;
+}
+
+/* Character Counter */
+.char-counter {
+    font-size: 11px;
+    color: #6c757d;
+    text-align: right;
+    margin-top: 4px;
+}
+
+.char-counter.warning {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+.char-counter.error {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Fullscreen Mode */
+body.fullscreen-mode .container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: 100%;
+    width: 100%;
+    height: 100vh;
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+}
+
+body.fullscreen-mode header {
+    display: none;
+}
+
+body.fullscreen-mode .form-panel {
+    display: none;
+}
+
+body.fullscreen-mode .main-content {
+    grid-template-columns: 1fr;
+    min-height: calc(100vh - 70px);
+}
+
+/* Compact Mode */
+body.compact-mode .toolbar {
+    padding: 10px;
+}
+
+body.compact-mode .btn {
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+body.compact-mode .form-section {
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+body.compact-mode .form-group {
+    margin-bottom: 12px;
+}
+
+body.compact-mode header h1 {
+    font-size: 2em;
+}
+
+body.compact-mode .subtitle {
+    font-size: 0.9em;
+}
+
+/* Realtime Preview Active */
+.realtime-active {
+    background: #28a745 !important;
+    color: white !important;
+}
+
+/* Dark theme for new panels */
+body.dark-theme .side-panel {
+    background: #0f3460;
+}
+
+body.dark-theme .version-item,
+body.dark-theme .suggestion-item {
+    background: #16213e;
+    color: #e9ecef;
+}
+
+body.dark-theme .version-item:hover {
+    background: #1a1a2e;
+}
+
+body.dark-theme .char-counter {
+    color: #adb5bd;
+}
+
 @media print {
     body {
         background: white;
@@ -744,7 +982,8 @@ body.dark-theme .warning-section {
     .toolbar,
     .stats-panel,
     .shortcuts-panel,
-    .form-panel {
+    .form-panel,
+    .side-panel {
         display: none !important;
     }
 
