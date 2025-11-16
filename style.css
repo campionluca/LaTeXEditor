@@ -476,16 +476,46 @@ header h1 {
     flex-wrap: wrap;
 }
 
+/* Editor con numeri di riga */
+.editor-wrapper {
+    display: flex;
+    border: 2px solid #495057;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #f8f9fa;
+}
+
+.line-numbers {
+    background: #e9ecef;
+    color: #6c757d;
+    padding: 10px 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: right;
+    user-select: none;
+    min-width: 50px;
+    border-right: 1px solid #dee2e6;
+    overflow: hidden;
+}
+
 .latex-editor {
+    flex: 1;
     width: 100%;
     resize: vertical;
-    border: 2px solid #495057;
+    border: none;
     font-family: 'Courier New', monospace;
     tab-size: 4;
+    padding: 10px;
+    line-height: 1.5;
+    font-size: 14px;
 }
 
 .latex-editor:focus {
     outline: none;
+}
+
+.editor-wrapper:focus-within {
     border-color: #667eea;
 }
 
@@ -1089,10 +1119,20 @@ body.dark-theme .pdf-table th {
     background: #16213e;
 }
 
+body.dark-theme .editor-wrapper {
+    background: #1a1a2e;
+    border-color: #495057;
+}
+
+body.dark-theme .line-numbers {
+    background: #16213e;
+    color: #8892b0;
+    border-right-color: #495057;
+}
+
 body.dark-theme .latex-editor {
     background: #1a1a2e;
     color: #f8f8f2;
-    border-color: #495057;
 }
 
 body.dark-theme .toggle-edit {
