@@ -6,6 +6,7 @@ Compila file .tex in PDF usando pdflatex locale
 
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
+from io import BytesIO
 import subprocess
 import tempfile
 import os
@@ -65,7 +66,6 @@ def compile_latex():
                 pdf_data = pdf_file.read()
 
         # Restituisci il PDF dalla memoria (fuori dal context manager)
-        from io import BytesIO
         return send_file(
             BytesIO(pdf_data),
             mimetype='application/pdf',
