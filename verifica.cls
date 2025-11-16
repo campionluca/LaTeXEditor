@@ -128,11 +128,22 @@
     \@@classe       \\[.2cm]
     \hline
   \end{tabular}}
-  \ifdefined\@tempo
-    \def\tempo@ad{\begin{center}%
-      \textit{Tempo a disposizione: \@tempo}\end{center}}
+  \ifdefined\@docente
+    \ifdefined\@tempo
+      \def\tempo@ad{\begin{center}%
+        \textit{Tempo a disposizione: \@tempo}\\
+        \textit{Docente: \@docente}\end{center}}
+    \else
+      \def\tempo@ad{\begin{center}%
+        \textit{Docente: \@docente}\end{center}}
+    \fi
   \else
-    \def\tempo@ad{\vspace{.5cm}}
+    \ifdefined\@tempo
+      \def\tempo@ad{\begin{center}%
+        \textit{Tempo a disposizione: \@tempo}\end{center}}
+    \else
+      \def\tempo@ad{\vspace{.5cm}}
+    \fi
   \fi
 \noindent\@tabellauno\hfill\@tabelladue\tempo@ad}
 \def\intestazionerighe{%
@@ -147,11 +158,22 @@
 \else
   \def\@@lineanome{\relax}
 \fi
-\ifdefined\@tempo
-  \def\tempo@ad{{\centering%
-    \textit{Tempo a disposizione: \@tempo}\par}\vspace{.5em}}
+\ifdefined\@docente
+  \ifdefined\@tempo
+    \def\tempo@ad{{\centering%
+      \textit{Tempo a disposizione: \@tempo}\\
+      \textit{Docente: \@docente}\par}\vspace{.5em}}
+  \else
+    \def\tempo@ad{{\centering%
+      \textit{Docente: \@docente}\par}\vspace{.5em}}
+  \fi
 \else
-  \def\tempo@ad{\vspace{.1em}}
+  \ifdefined\@tempo
+    \def\tempo@ad{{\centering%
+      \textit{Tempo a disposizione: \@tempo}\par}\vspace{.5em}}
+  \else
+    \def\tempo@ad{\vspace{.1em}}
+  \fi
 \fi
 \@@lineanome
 \null\vspace{-1cm}
